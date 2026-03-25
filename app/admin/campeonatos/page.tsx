@@ -14,9 +14,11 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Settings2, Users, Clock, Trophy } from "lucide-react";
 import { championships } from "@/lib/mockData";
+import { sportConfigs } from "@/lib/adminMockData";
 import { useToast } from "@/hooks/use-toast";
+import { Separator } from "@/components/ui/separator";
 
 const statusMap: Record<string, string> = {
   activo: "En curso",
@@ -32,18 +34,40 @@ const statusBadge: Record<string, string> = {
 
 export default function AdminChampionshipsPage() {
   const [search, setSearch] = useState("");
+  const [selectedSport, setSelectedSport] = useState("");
+  const [titulares, setTitulares] = useState("");
+  const [suplentes, setSuplentes] = useState("");
+  const [matchDuration, setMatchDuration] = useState("");
+  const [maxInscripciones, setMaxInscripciones] = useState("");
   const { toast } = useToast();
 
   const filtered = championships.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleSportChange = (sportId: string) => {
+    setSelectedSport(sportId);
+    const config = sportConfigs.find((s) => s.id === sportId);
+    if (config) {
+      setTitulares(String(config.defaultTitulares));
+      setSuplentes(String(config.defaultSuplentes));
+      setMatchDuration(String(config.defaultMatchDuration));
+    }
+  };
+
   const handleCreate = () => {
     toast({
       title: "Campeonato creado",
       description: "El campeonato se ha creado exitosamente (demo).",
     });
+    setSelectedSport("");
+    setTitulares("");
+    setSuplentes("");
+    setMatchDuration("");
+    setMaxInscripciones("");
   };
+
+  const sportConfig = sportConfigs.find((s) => s.id === selectedSport);
 
   return (
     <div className="space-y-6">
@@ -51,7 +75,7 @@ export default function AdminChampionshipsPage() {
         <div>
           <h1 className="font-display text-4xl text-foreground">CAMPEONATOS</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Crea y gestiona campeonatos
+            Crea y gestiona campeonatos con configuración completa
           </p>
         </div>
         <Dialog>
@@ -60,29 +84,117 @@ export default function AdminChampionshipsPage() {
               <Plus className="h-4 w-4 mr-1" /> Nuevo Campeonato
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Crear Campeonato</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-primary" />
+                Crear Campeonato
+              </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-2">
+            <div className="space-y-5 py-2">
+              {/* Basic Info */}
               <div className="space-y-2">
-                <Label>Nombre</Label>
+                <Label>Nombre del campeonato</Label>
                 <Input placeholder="Ej: Copa Verano 2026" />
               </div>
+
+              {/* Sport Selection */}
               <div className="space-y-2">
-                <Label>Deporte</Label>
-                <Select>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                <Label className="flex items-center gap-1.5">
+                  Deporte / Categoría
+                </Label>
+                <Select value={selectedSport} onValueChange={handleSportChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar deporte" />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="futbol">Fútbol</SelectItem>
-                    <SelectItem value="baloncesto">Baloncesto</SelectItem>
-                    <SelectItem value="voleibol">Voleibol</SelectItem>
-                    <SelectItem value="futsal">Futsal</SelectItem>
+                    {sportConfigs.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{s.icon}</span>
+                          <span>{s.name}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              {selectedSport && (
+                <>
+                  <Separator />
+                  <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                    <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                      <Settings2 className="h-4 w-4 text-primary" />
+                      Configuración del deporte
+                    </h4>
+
+                    {/* Players config */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Jugadores titulares</Label>
+                        <Input
+                          type="number"
+                          value={titulares}
+                          onChange={(e) => setTitulares(e.target.value)}
+                          min={1}
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          Default: {sportConfig?.defaultTitulares}
+                        </p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Jugadores suplentes</Label>
+                        <Input
+                          type="number"
+                          value={suplentes}
+                          onChange={(e) => setSuplentes(e.target.value)}
+                          min={0}
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          Default: {sportConfig?.defaultSuplentes}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Match duration */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5" />
+                        Duración del partido (minutos)
+                      </Label>
+                      <Input
+                        type="number"
+                        value={matchDuration}
+                        onChange={(e) => setMatchDuration(e.target.value)}
+                        min={1}
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        Default: {sportConfig?.defaultMatchDuration} min
+                      </p>
+                    </div>
+
+                    {/* Max inscriptions */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5" />
+                        Máximo de equipos inscritos
+                      </Label>
+                      <Input
+                        type="number"
+                        value={maxInscripciones}
+                        onChange={(e) => setMaxInscripciones(e.target.value)}
+                        placeholder="Ej: 16"
+                        min={2}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Format */}
               <div className="space-y-2">
-                <Label>Formato</Label>
+                <Label>Formato de competencia</Label>
                 <Select>
                   <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                   <SelectContent>
@@ -92,19 +204,16 @@ export default function AdminChampionshipsPage() {
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Fecha</Label>
+                  <Label>Fecha de inicio</Label>
                   <Input type="month" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Equipos</Label>
-                  <Input type="number" placeholder="16" />
+                  <Label>Ubicación</Label>
+                  <Input placeholder="Ej: Estadio Central" />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Ubicación</Label>
-                <Input placeholder="Ej: Estadio Central" />
               </div>
             </div>
             <DialogFooter>
@@ -112,7 +221,7 @@ export default function AdminChampionshipsPage() {
                 <Button variant="outline">Cancelar</Button>
               </DialogClose>
               <DialogClose asChild>
-                <Button onClick={handleCreate}>Crear</Button>
+                <Button onClick={handleCreate}>Crear Campeonato</Button>
               </DialogClose>
             </DialogFooter>
           </DialogContent>
@@ -148,14 +257,10 @@ export default function AdminChampionshipsPage() {
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.name}</TableCell>
                   <TableCell>{c.sport}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {c.format}
-                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{c.format}</TableCell>
                   <TableCell>{c.teams}</TableCell>
                   <TableCell>
-                    <span
-                      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadge[c.status]}`}
-                    >
+                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadge[c.status]}`}>
                       {statusMap[c.status]}
                     </span>
                   </TableCell>
