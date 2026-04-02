@@ -2,22 +2,20 @@
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, UserPlus, Trash2, Camera, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { Search, UserPlus, Trash2, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { mockPlayers, type Player } from "@/lib/adminMockData";
 import { championships, teams } from "@/lib/mockData";
 import { useToast } from "@/hooks/use-toast";
+import PlayerInscriptionForm from "@/components/admin/PlayerInscriptionForm";
 
 const positionOptions = [
   "Portero", "Defensa", "Mediocampista", "Delantero",
@@ -34,12 +32,12 @@ export default function AdminDelegadoInscripcionPage() {
   const [search, setSearch] = useState("");
   const [selectedChampionship, setSelectedChampionship] = useState("1");
   const [selectedTeam, setSelectedTeam] = useState("1");
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [localPlayers, setLocalPlayers] = useState(mockPlayers);
   const { toast } = useToast();
 
   const filteredTeams = teams.filter((t) => t.championshipId === selectedChampionship);
 
-  const players = mockPlayers.filter(
+  const players = localPlayers.filter(
     (p) => p.teamId === selectedTeam && p.championshipId === selectedChampionship
   );
 
@@ -52,29 +50,48 @@ export default function AdminDelegadoInscripcionPage() {
   const selectedChamp = championships.find((c) => c.id === selectedChampionship);
   const selectedTeamData = teams.find((t) => t.id === selectedTeam);
 
-  const handlePhotoCapture = () => {
-    setPhotoPreview("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzIyMiIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2FhYSIgZm9udC1zaXplPSIxMiI+Rm90bzwvdGV4dD48L3N2Zz4=");
-    toast({ title: "Foto capturada", description: "La foto del jugador ha sido tomada (demo)." });
-  };
-
-  const handleInscribir = () => {
-    toast({
-      title: "Jugador inscrito",
-      description: "El jugador se ha registrado exitosamente (demo).",
-    });
-    setPhotoPreview(null);
-  };
-
   const inscritos = players.filter((p) => p.status === "inscrito").length;
   const pendientes = players.filter((p) => p.status === "pendiente").length;
   const maxJugadores = 22;
 
+  const handleInscribir = (player: {
+    name: string;
+    dni: string;
+    number: number;
+    position: string;
+    photoUrl: string | null;
+  }) => {
+    const newPlayer: Player = {
+      id: `p${Date.now()}`,
+      name: player.name,
+      cedula: player.dni,
+      position: player.position,
+      number: player.number,
+      teamId: selectedTeam,
+      teamName: selectedTeamData?.name || "",
+      championshipId: selectedChampionship,
+      photoUrl: player.photoUrl || "",
+      status: "pendiente",
+      createdAt: new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" }),
+    };
+    setLocalPlayers((prev) => [...prev, newPlayer]);
+    toast({
+      title: "Jugador inscrito",
+      description: `${player.name} ha sido registrado exitosamente.`,
+    });
+  };
+
+  const handleDelete = (playerId: string) => {
+    setLocalPlayers((prev) => prev.filter((p) => p.id !== playerId));
+    toast({ title: "Jugador eliminado", description: "El jugador ha sido removido de la lista." });
+  };
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-4xl text-foreground">INSCRIPCION DE JUGADORES</h1>
+        <h1 className="font-display text-4xl text-foreground">INSCRIPCIÓN DE JUGADORES</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Registra los jugadores de tu equipo en el campeonato
+          Ingresa el DNI del jugador para consultar sus datos y registrarlo en tu equipo
         </p>
       </div>
 
@@ -82,10 +99,14 @@ export default function AdminDelegadoInscripcionPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label className="text-xs text-muted-foreground">Campeonato</Label>
-          <Select value={selectedChampionship} onValueChange={setSelectedChampionship}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
+          <Select
+            value={selectedChampionship}
+            onValueChange={(v) => {
+              setSelectedChampionship(v);
+              setSelectedTeam(teams.filter((t) => t.championshipId === v)[0]?.id || "");
+            }}
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {championships.map((c) => (
                 <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -96,9 +117,7 @@ export default function AdminDelegadoInscripcionPage() {
         <div className="space-y-2">
           <Label className="text-xs text-muted-foreground">Equipo</Label>
           <Select value={selectedTeam} onValueChange={setSelectedTeam}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {filteredTeams.map((t) => (
                 <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
@@ -145,91 +164,28 @@ export default function AdminDelegadoInscripcionPage() {
         </Card>
       </div>
 
-      {/* Player list + Add */}
+      {/* Search + Add */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nombre o cedula..."
+            placeholder="Buscar por nombre o cédula..."
             className="max-w-xs"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-1" /> Inscribir Jugador
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <UserPlus className="h-5 w-5 text-primary" />
-                Inscribir Jugador
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              {/* Photo capture */}
-              <div className="flex flex-col items-center gap-3">
-                <div className="relative h-28 w-28 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center bg-muted/50 overflow-hidden">
-                  {photoPreview ? (
-                    <img src={photoPreview} alt="Foto jugador" className="h-full w-full object-cover" />
-                  ) : (
-                    <Camera className="h-8 w-8 text-muted-foreground/50" />
-                  )}
-                </div>
-                <Button variant="outline" size="sm" onClick={handlePhotoCapture} className="gap-1.5">
-                  <Camera className="h-3.5 w-3.5" />
-                  {photoPreview ? "Retomar foto" : "Tomar foto"}
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2 space-y-2">
-                  <Label>Nombre completo</Label>
-                  <Input placeholder="Ej: Roberto Sanchez" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Cedula / DNI</Label>
-                  <Input placeholder="0901234567" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Numero</Label>
-                  <Input type="number" placeholder="10" min={1} max={99} />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Posicion</Label>
-                <Select>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                  <SelectContent>
-                    {positionOptions.map((p) => (
-                      <SelectItem key={p} value={p}>{p}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-                <p className="font-medium text-foreground mb-1">Equipo: {selectedTeamData?.name}</p>
-                <p>Campeonato: {selectedChamp?.name}</p>
-                <p>Jugadores registrados: {players.length} / {maxJugadores}</p>
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancelar</Button>
-              </DialogClose>
-              <DialogClose asChild>
-                <Button onClick={handleInscribir}>Inscribir</Button>
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <PlayerInscriptionForm
+          teamName={selectedTeamData?.name || ""}
+          championshipName={selectedChamp?.name || ""}
+          playersCount={players.length}
+          maxPlayers={maxJugadores}
+          positionOptions={positionOptions}
+          onInscribir={handleInscribir}
+        />
       </div>
 
+      {/* Player table */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -237,8 +193,8 @@ export default function AdminDelegadoInscripcionPage() {
               <TableRow>
                 <TableHead className="w-12">#</TableHead>
                 <TableHead>Jugador</TableHead>
-                <TableHead>Cedula</TableHead>
-                <TableHead>Posicion</TableHead>
+                <TableHead>Cédula</TableHead>
+                <TableHead>Posición</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -274,7 +230,12 @@ export default function AdminDelegadoInscripcionPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(p.id)}
+                      >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </TableCell>

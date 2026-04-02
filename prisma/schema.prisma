@@ -1,0 +1,424 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  administrador
+  organizador
+  supervisor
+  tecnico
+  delegado
+}
+
+enum ChampionshipStatus {
+  borrador
+  inscripciones
+  en_curso
+  finalizado
+}
+
+enum ChampionshipFormat {
+  liga
+  eliminacion
+  grupos_eliminacion
+}
+
+enum Sport {
+  futbol
+  futsal
+  baloncesto
+  voleibol
+}
+
+enum TeamStatus {
+  activo
+  descalificado
+  retirado
+}
+
+enum PlayerStatus {
+  activo
+  suspendido
+  inhabilitado
+}
+
+enum RosterStatus {
+  pendiente
+  inscrito
+  rechazado
+}
+
+enum MatchStatus {
+  programado
+  en_curso
+  finalizado
+  suspendido
+  postergado
+}
+
+enum EventType {
+  gol
+  gol_en_contra
+  amarilla
+  roja
+  roja_directa
+  cambio
+}
+
+enum MatchRound {
+  fase_grupos
+  dieciseisavos
+  octavos
+  cuartos
+  semifinal
+  tercer_puesto
+  final
+}
+
+// ─────────────────────────────────────────────
+// USUARIOS Y ROLES
+// ─────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String   // hashed
+  phone     String?
+  dni       String?  @unique
+  avatarUrl          String?
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  assignedTo         String?   // nota del organizador al distribuir el cupo
+  assignedAt         DateTime?
+  tempPassword       String?   // contraseña temporal en texto plano, se borra al cambiarla
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // Roles asignados (un usuario puede tener varios)
+  userRoles UserRole[]
+
+  // Relaciones funcionales
+  supervisedChampionships Championship[] @relation("SupervisorChampionship")
+  technicianMatches       Match[]        @relation("TechnicianMatch")
+  delegatedTeams          Team[]         @relation("DelegateTeam")
+  recordedEvents          MatchEvent[]   @relation("EventRecordedBy")
+  validatedRosters        RosterEntry[]  @relation("ValidatedBy")
+  createdChampionships    Championship[] @relation("ChampionshipCreatedBy")
+
+  @@map("users")
+}
+
+model UserRole {
+  id             String    @id @default(cuid())
+  userId         String
+  role           Role
+  // Scope: un supervisor/tecnico/delegado se asigna a un campeonato especifico
+  championshipId String?
+  // Scope adicional para delegado: se asigna a un equipo
+  teamId         String?
+  createdAt      DateTime  @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  championship Championship? @relation(fields: [championshipId], references: [id], onDelete: SetNull)
+  team         Team?         @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, role, championshipId])
+  @@map("user_roles")
+}
+
+// ─────────────────────────────────────────────
+// CAMPEONATOS
+// ─────────────────────────────────────────────
+
+model Championship {
+  id          String             @id @default(cuid())
+  name        String
+  slug        String             @unique
+  sport       Sport
+  description String?
+  logoUrl     String?
+  bannerUrl   String?
+  status      ChampionshipStatus @default(borrador)
+  format      ChampionshipFormat
+  startDate   DateTime?
+  endDate     DateTime?
+  location    String?
+
+  // Configuracion deportiva
+  maxEquipos       Int @default(0)
+  titulares        Int @default(11)
+  suplentes        Int @default(7)
+  minSuplentes     Int @default(5)
+  matchDurationMin Int @default(90)
+  maxInscripciones Int @default(22)
+
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User @relation("ChampionshipCreatedBy", fields: [createdById], references: [id])
+
+  // Relaciones
+  userRoles  UserRole[]
+  teams      Team[]
+  jornadas   Jornada[]
+  groups     Group[]
+  standings  Standing[]
+  matches    Match[]
+
+  // Scoped supervisors/tecnicos
+  supervisors User[] @relation("SupervisorChampionship")
+
+  @@map("championships")
+}
+
+// ─────────────────────────────────────────────
+// EQUIPOS
+// ─────────────────────────────────────────────
+
+model Team {
+  id             String     @id @default(cuid())
+  name           String
+  shieldUrl      String?
+  colorPrimary   String?
+  colorSecondary String?
+  status         TeamStatus @default(activo)
+  championshipId String
+  delegateId     String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  championship Championship @relation(fields: [championshipId], references: [id], onDelete: Cascade)
+  delegate     User?        @relation("DelegateTeam", fields: [delegateId], references: [id], onDelete: SetNull)
+
+  // Relaciones
+  userRoles   UserRole[]
+  rosterEntries RosterEntry[]
+  homeMatches  Match[]      @relation("HomeTeam")
+  awayMatches  Match[]      @relation("AwayTeam")
+  groupTeams   GroupTeam[]
+  standings    Standing[]
+  matchEvents  MatchEvent[]
+
+  @@unique([name, championshipId])
+  @@map("teams")
+}
+
+// ─────────────────────────────────────────────
+// JUGADORES
+// ─────────────────────────────────────────────
+
+model Player {
+  id         String   @id @default(cuid())
+  dni        String   @unique
+  firstName  String
+  lastName   String
+  birthDate  DateTime?
+  gender     String?   // "M" | "F"
+  photoUrl   String?
+  phone      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  rosterEntries RosterEntry[]
+  matchEvents   MatchEvent[]
+  substitutedIn MatchEvent[] @relation("SubstitutedIn")
+
+  @@map("players")
+}
+
+// Planilla: jugador inscrito en un equipo para un campeonato
+model RosterEntry {
+  id             String       @id @default(cuid())
+  playerId       String
+  teamId         String
+  number         Int           // numero de camiseta
+  position       String
+  status         RosterStatus  @default(pendiente)
+  validated      Boolean       @default(false)
+  validatedById  String?
+  validatedAt    DateTime?
+  photoUrl       String?       // foto tomada en validacion
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  player      Player  @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team        Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  validatedBy User?   @relation("ValidatedBy", fields: [validatedById], references: [id], onDelete: SetNull)
+
+  @@unique([playerId, teamId])
+  @@unique([teamId, number])
+  @@map("roster_entries")
+}
+
+// ─────────────────────────────────────────────
+// JORNADAS Y PARTIDOS
+// ─────────────────────────────────────────────
+
+model Jornada {
+  id             String   @id @default(cuid())
+  championshipId String
+  number         Int
+  name           String?  // ej: "Fecha 1", "Cuartos de Final"
+  dateFrom       DateTime?
+  dateTo         DateTime?
+  createdAt      DateTime @default(now())
+
+  championship Championship @relation(fields: [championshipId], references: [id], onDelete: Cascade)
+  matches      Match[]
+
+  @@unique([championshipId, number])
+  @@map("jornadas")
+}
+
+model Match {
+  id             String      @id @default(cuid())
+  championshipId String
+  jordanaId      String?
+  groupId        String?
+  homeTeamId     String
+  awayTeamId     String
+  venue          String?
+  scheduledAt    DateTime?
+  status         MatchStatus @default(programado)
+  round          MatchRound  @default(fase_grupos)
+
+  // Resultado
+  homeScore Int @default(0)
+  awayScore Int @default(0)
+
+  // Control en vivo
+  startedAt      DateTime?
+  endedAt        DateTime?
+  currentMinute  Int?
+
+  // Responsables
+  tecnicoId     String?
+  supervisorId  String?
+
+  // Bracket: ganador avanza a este partido
+  nextMatchId   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  championship Championship @relation(fields: [championshipId], references: [id], onDelete: Cascade)
+  jornada      Jornada?     @relation(fields: [jordanaId], references: [id], onDelete: SetNull)
+  group        Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  homeTeam     Team         @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam     Team         @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  tecnico      User?        @relation("TechnicianMatch", fields: [tecnicoId], references: [id], onDelete: SetNull)
+  nextMatch    Match?       @relation("BracketProgression", fields: [nextMatchId], references: [id])
+  prevMatches  Match[]      @relation("BracketProgression")
+
+  events MatchEvent[]
+
+  @@map("matches")
+}
+
+model MatchEvent {
+  id           String    @id @default(cuid())
+  matchId      String
+  teamId       String
+  playerId     String
+  eventType    EventType
+  minute       Int
+  // Solo para cambios: jugador que sale
+  playerOutId  String?
+  recordedById String
+  createdAt    DateTime  @default(now())
+
+  match       Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  team        Team    @relation(fields: [teamId], references: [id])
+  player      Player  @relation(fields: [playerId], references: [id])
+  playerOut   Player? @relation("SubstitutedIn", fields: [playerOutId], references: [id])
+  recordedBy  User    @relation("EventRecordedBy", fields: [recordedById], references: [id])
+
+  @@map("match_events")
+}
+
+// ─────────────────────────────────────────────
+// GRUPOS (formato grupos + eliminacion)
+// ─────────────────────────────────────────────
+
+model Group {
+  id             String @id @default(cuid())
+  championshipId String
+  name           String  // "Grupo A", "Grupo B"
+  createdAt      DateTime @default(now())
+
+  championship Championship @relation(fields: [championshipId], references: [id], onDelete: Cascade)
+  groupTeams   GroupTeam[]
+  matches      Match[]
+
+  @@unique([championshipId, name])
+  @@map("groups")
+}
+
+model GroupTeam {
+  id      String @id @default(cuid())
+  groupId String
+  teamId  String
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  team  Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, teamId])
+  @@map("group_teams")
+}
+
+// ─────────────────────────────────────────────
+// TABLA DE POSICIONES
+// ─────────────────────────────────────────────
+
+model Standing {
+  id             String @id @default(cuid())
+  championshipId String
+  teamId         String
+  groupId        String?  // null = standings generales de liga
+
+  position       Int @default(0)
+  points         Int @default(0)
+  played         Int @default(0)
+  won            Int @default(0)
+  drawn          Int @default(0)
+  lost           Int @default(0)
+  goalsFor       Int @default(0)
+  goalsAgainst   Int @default(0)
+  goalDifference Int @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  championship Championship @relation(fields: [championshipId], references: [id], onDelete: Cascade)
+  team         Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([championshipId, teamId, groupId])
+  @@map("standings")
+}
+
+// ─────────────────────────────────────────────
+// SUSPENSIONES
+// ─────────────────────────────────────────────
+
+model Suspension {
+  id               String  @id @default(cuid())
+  playerId         String
+  championshipId   String
+  reason           String  // "acumulacion_amarillas" | "roja_directa" | "disciplinario"
+  matchesSuspended Int     @default(1)
+  matchesServed    Int     @default(0)
+  active           Boolean @default(true)
+  createdAt        DateTime @default(now())
+
+  @@map("suspensions")
+}

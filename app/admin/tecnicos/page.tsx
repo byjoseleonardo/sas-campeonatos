@@ -60,7 +60,6 @@ export default function AdminTecnicosPage() {
   const validatedCount = planilla.filter((p) => p.validated).length;
   const totalPlayers = planilla.length;
 
-  // Camera functions
   const startCamera = useCallback(async (playerId: string) => {
     setCurrentPlayerId(playerId);
     setCameraOpen(true);
@@ -102,7 +101,6 @@ export default function AdminTecnicosPage() {
     if (ctx) {
       ctx.drawImage(video, 0, 0);
       const photoData = canvas.toDataURL("image/jpeg", 0.8);
-
       setPlanilla((prev) =>
         prev.map((p) =>
           p.player.id === currentPlayerId
@@ -110,13 +108,8 @@ export default function AdminTecnicosPage() {
             : p
         )
       );
-
-      toast({
-        title: "Jugador validado",
-        description: "La foto fue capturada y el jugador pasa a la planilla.",
-      });
+      toast({ title: "Jugador validado", description: "La foto fue capturada y el jugador pasa a la planilla." });
     }
-
     stopCamera();
   }, [currentPlayerId, stopCamera, toast]);
 
@@ -128,21 +121,9 @@ export default function AdminTecnicosPage() {
 
   useEffect(() => {
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
+      if (stream) stream.getTracks().forEach((track) => track.stop());
     };
   }, [stream]);
-
-  const handleStartMatch = () => {
-    setMatchStarted(true);
-    toast({ title: "¡Partido iniciado!", description: "El cronómetro ha comenzado." });
-  };
-
-  const handleEndMatch = () => {
-    setMatchStarted(false);
-    toast({ title: "Partido finalizado", description: "Los resultados han sido registrados (demo)." });
-  };
 
   const updateStat = (playerId: string, stat: "goals" | "yellowCards" | "redCards", delta: number) => {
     setPlanilla((prev) =>
@@ -219,12 +200,18 @@ export default function AdminTecnicosPage() {
                   <div className="h-2 w-2 rounded-full bg-destructive" />
                   EN VIVO
                 </Badge>
-                <Button variant="destructive" size="sm" onClick={handleEndMatch} className="gap-1.5">
+                <Button variant="destructive" size="sm" onClick={() => {
+                  setMatchStarted(false);
+                  toast({ title: "Partido finalizado", description: "Los resultados han sido registrados (demo)." });
+                }} className="gap-1.5">
                   <Square className="h-3.5 w-3.5" /> Finalizar
                 </Button>
               </>
             ) : (
-              <Button size="sm" onClick={handleStartMatch} className="gap-1.5" disabled={validatedCount === 0}>
+              <Button size="sm" onClick={() => {
+                setMatchStarted(true);
+                toast({ title: "¡Partido iniciado!", description: "El cronómetro ha comenzado." });
+              }} className="gap-1.5" disabled={validatedCount === 0}>
                 <Play className="h-3.5 w-3.5" /> Iniciar Partido
               </Button>
             )}
@@ -291,12 +278,11 @@ export default function AdminTecnicosPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* VALIDACIÓN TAB */}
+        {/* VALIDACIÓN */}
         <TabsContent value="validacion" className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Haz clic en un jugador para tomar su foto con la cámara y validar su ingreso a la planilla.
           </p>
-
           <Card>
             <CardContent className="p-0">
               <Table>
@@ -319,11 +305,8 @@ export default function AdminTecnicosPage() {
                         <div className="flex items-center gap-3">
                           <div className="relative h-9 w-9 shrink-0">
                             {entry.photoUrl ? (
-                              <img
-                                src={entry.photoUrl}
-                                alt={entry.player.name}
-                                className="h-9 w-9 rounded-full object-cover border-2 border-primary"
-                              />
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={entry.photoUrl} alt={entry.player.name} className="h-9 w-9 rounded-full object-cover border-2 border-primary" />
                             ) : (
                               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted font-display text-sm">
                                 {entry.player.name.charAt(0)}
@@ -353,12 +336,7 @@ export default function AdminTecnicosPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         {!entry.validated && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1.5"
-                            onClick={() => startCamera(entry.player.id)}
-                          >
+                          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => startCamera(entry.player.id)}>
                             <Camera className="h-3.5 w-3.5" /> Validar
                           </Button>
                         )}
@@ -371,12 +349,11 @@ export default function AdminTecnicosPage() {
           </Card>
         </TabsContent>
 
-        {/* ESTADÍSTICAS TAB */}
+        {/* ESTADÍSTICAS */}
         <TabsContent value="estadisticas" className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Registra goles, tarjetas amarillas y rojas para los jugadores validados en la planilla.
           </p>
-
           <Card>
             <CardContent className="p-0">
               <Table>
@@ -384,97 +361,48 @@ export default function AdminTecnicosPage() {
                   <TableRow>
                     <TableHead className="w-12">#</TableHead>
                     <TableHead>Jugador</TableHead>
-                    <TableHead className="text-center">Goles</TableHead>
-                    <TableHead className="text-center">Amarillas</TableHead>
-                    <TableHead className="text-center">Rojas</TableHead>
+                    <TableHead className="text-center">⚽ Goles</TableHead>
+                    <TableHead className="text-center">🟨 Amarillas</TableHead>
+                    <TableHead className="text-center">🟥 Rojas</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {planilla
-                    .filter((p) => p.validated)
-                    .map((entry) => (
-                      <TableRow key={entry.player.id}>
-                        <TableCell className="font-display text-lg text-muted-foreground">
-                          {entry.player.number}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {entry.photoUrl && (
-                              <img src={entry.photoUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
-                            )}
-                            <span className="text-sm font-medium">{entry.player.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
+                  {planilla.filter((p) => p.validated).map((entry) => (
+                    <TableRow key={entry.player.id}>
+                      <TableCell className="font-display text-lg text-muted-foreground">
+                        {entry.player.number}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {entry.photoUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={entry.photoUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
+                          )}
+                          <span className="text-sm font-medium">{entry.player.name}</span>
+                        </div>
+                      </TableCell>
+                      {(["goals", "yellowCards", "redCards"] as const).map((stat) => (
+                        <TableCell key={stat}>
                           <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost" size="icon" className="h-7 w-7"
-                              onClick={() => updateStat(entry.player.id, "goals", -1)}
-                              disabled={!matchStarted}
-                            >
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateStat(entry.player.id, stat, -1)} disabled={!matchStarted}>
                               <MinusIcon className="h-3 w-3" />
                             </Button>
-                            <span className="w-6 text-center font-display text-lg">{entry.goals}</span>
-                            <Button
-                              variant="ghost" size="icon" className="h-7 w-7"
-                              onClick={() => updateStat(entry.player.id, "goals", 1)}
-                              disabled={!matchStarted}
-                            >
+                            <span className="w-6 text-center font-display text-lg">{entry[stat]}</span>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateStat(entry.player.id, stat, 1)} disabled={!matchStarted}>
                               <Plus className="h-3 w-3" />
                             </Button>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost" size="icon" className="h-7 w-7"
-                              onClick={() => updateStat(entry.player.id, "yellowCards", -1)}
-                              disabled={!matchStarted}
-                            >
-                              <MinusIcon className="h-3 w-3" />
-                            </Button>
-                            <span className="w-6 text-center font-display text-lg">{entry.yellowCards}</span>
-                            <Button
-                              variant="ghost" size="icon" className="h-7 w-7"
-                              onClick={() => updateStat(entry.player.id, "yellowCards", 1)}
-                              disabled={!matchStarted}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost" size="icon" className="h-7 w-7"
-                              onClick={() => updateStat(entry.player.id, "redCards", -1)}
-                              disabled={!matchStarted}
-                            >
-                              <MinusIcon className="h-3 w-3" />
-                            </Button>
-                            <span className="w-6 text-center font-display text-lg">{entry.redCards}</span>
-                            <Button
-                              variant="ghost" size="icon" className="h-7 w-7"
-                              onClick={() => updateStat(entry.player.id, "redCards", 1)}
-                              disabled={!matchStarted}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                      ))}
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
               {planilla.filter((p) => p.validated).length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <UserCheck className="h-10 w-10 text-muted-foreground/30 mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    No hay jugadores validados aún
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Ve a la pestaña de Validación para agregar jugadores a la planilla
-                  </p>
+                  <p className="text-sm text-muted-foreground">No hay jugadores validados aún</p>
+                  <p className="text-xs text-muted-foreground mt-1">Ve a la pestaña de Validación para agregar jugadores a la planilla</p>
                 </div>
               )}
             </CardContent>
@@ -500,13 +428,7 @@ export default function AdminTecnicosPage() {
               </p>
             )}
             <div className="relative w-full aspect-[4/3] rounded-lg overflow-hidden bg-muted">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="h-full w-full object-cover"
-              />
+              <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
             </div>
             <canvas ref={canvasRef} className="hidden" />
             <div className="flex gap-2">

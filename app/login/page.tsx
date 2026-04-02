@@ -1,70 +1,56 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Trophy, LogIn, Lock, User, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { loginAction } from "./actions";
 
-const mockUsers = [
-  { email: "admin@champzone.com", password: "admin123", role: "admin", name: "Carlos Administrador" },
-  { email: "supervisor@champzone.com", password: "super123", role: "supervisor", name: "María Supervisora" },
-  { email: "tecnico@champzone.com", password: "tec123", role: "tecnico", name: "Jorge Técnico" },
-  { email: "delegado@champzone.com", password: "del123", role: "delegado", name: "Ana Delegada" },
+const demoCredentials = [
+  { label: "Administrador", email: "admin@champzone.com", password: "admin123" },
 ];
-
-const roleRoutes: Record<string, string> = {
-  admin: "/admin",
-  supervisor: "/admin/supervisores",
-  tecnico: "/admin/tecnicos",
-  delegado: "/delegado/inscripcion",
-};
-
-const roleLabels: Record<string, string> = {
-  admin: "Organizador",
-  supervisor: "Supervisor",
-  tecnico: "Técnico",
-  delegado: "Delegado",
-};
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    setTimeout(() => {
-      const user = mockUsers.find(
-        (u) => u.email === email.trim().toLowerCase() && u.password === password
-      );
+    try {
+      const result = await loginAction(email.trim().toLowerCase(), password);
 
-      if (user) {
-        toast({
-          title: `Bienvenido, ${user.name}`,
-          description: `Ingresando como ${roleLabels[user.role]}`,
-        });
-        router.push(roleRoutes[user.role]);
-      } else {
+      if (result?.error) {
         toast({
           title: "Credenciales inválidas",
-          description: "Verifica tu correo y contraseña",
+          description: result.error,
           variant: "destructive",
         });
+        setLoading(false);
       }
+    } catch (error) {
+      // NEXT_REDIRECT es lanzado por signIn cuando el login es exitoso.
+      // Hay que re-lanzarlo para que Next.js procese la navegación.
+      if ((error as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) {
+        throw error;
+      }
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al iniciar sesión",
+        variant: "destructive",
+      });
       setLoading(false);
-    }, 600);
+    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--gradient-hero)] p-4">
       <div className="w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="text-center">
@@ -80,7 +66,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Card */}
-        <Card>
+        <Card className="border-border/50 shadow-[var(--shadow-elevated)]">
           <CardContent className="p-6 space-y-5">
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
@@ -128,14 +114,14 @@ export default function LoginPage() {
         </Card>
 
         {/* Demo credentials */}
-        <Card className="border-border/30 bg-card/50">
+        <Card className="border-border/30 bg-card/50 backdrop-blur">
           <CardContent className="p-4">
             <p className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-1.5">
               <ChevronRight className="h-3 w-3" />
               Credenciales de prueba
             </p>
             <div className="grid gap-2">
-              {mockUsers.map((u) => (
+              {demoCredentials.map((u) => (
                 <button
                   key={u.email}
                   type="button"
@@ -146,7 +132,7 @@ export default function LoginPage() {
                   className="flex items-center justify-between rounded-lg border border-border/50 bg-background/50 px-3 py-2 text-left text-xs hover:bg-muted/50 transition-colors"
                 >
                   <div>
-                    <span className="font-medium text-foreground">{roleLabels[u.role]}</span>
+                    <span className="font-medium text-foreground">{u.label}</span>
                     <span className="text-muted-foreground ml-2">{u.email}</span>
                   </div>
                   <LogIn className="h-3 w-3 text-muted-foreground" />

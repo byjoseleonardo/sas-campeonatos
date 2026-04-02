@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ClipboardList, Users, LogOut, Trophy, ChevronRight } from "lucide-react";
+import { signOut } from "next-auth/react";
 
 const navItems = [
   { title: "Inscripción", url: "/delegado/inscripcion", icon: ClipboardList },
@@ -24,13 +25,13 @@ export default function DelegadoLayout({ children }: { children: React.ReactNode
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium text-muted-foreground">Portal Delegado</span>
         </div>
-        <Link
-          href="/"
+        <button
+          onClick={() => signOut({ redirectTo: "/" })}
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <LogOut className="h-4 w-4" />
           Cerrar sesión
-        </Link>
+        </button>
       </header>
 
       {/* Nav tabs */}

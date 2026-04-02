@@ -62,14 +62,6 @@ export default function AdminSupervisoresPage() {
   const champMatches = mockScheduledMatches.filter((m) => m.championshipId === selectedChampionship);
   const champGroups = mockGroups.filter((g) => g.championshipId === selectedChampionship);
 
-  const handleCreateMatch = () => {
-    toast({ title: "Partido creado", description: "El partido ha sido programado exitosamente (demo)." });
-  };
-
-  const handleCreateGroup = () => {
-    toast({ title: "Grupo creado", description: "El grupo ha sido creado exitosamente (demo)." });
-  };
-
   return (
     <div className="space-y-6">
       <div>
@@ -83,9 +75,7 @@ export default function AdminSupervisoresPage() {
       <div className="max-w-sm space-y-2">
         <Label className="text-xs text-muted-foreground">Campeonato asignado</Label>
         <Select value={selectedChampionship} onValueChange={setSelectedChampionship}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             {championships.map((c) => (
               <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -155,7 +145,7 @@ export default function AdminSupervisoresPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* PARTIDOS TAB */}
+        {/* PARTIDOS */}
         <TabsContent value="partidos" className="space-y-4">
           <div className="flex justify-end">
             <Dialog>
@@ -217,7 +207,9 @@ export default function AdminSupervisoresPage() {
                     <Button variant="outline">Cancelar</Button>
                   </DialogClose>
                   <DialogClose asChild>
-                    <Button onClick={handleCreateMatch}>Programar</Button>
+                    <Button onClick={() => toast({ title: "Partido creado", description: "El partido ha sido programado exitosamente (demo)." })}>
+                      Programar
+                    </Button>
                   </DialogClose>
                 </DialogFooter>
               </DialogContent>
@@ -238,63 +230,59 @@ export default function AdminSupervisoresPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {champMatches
-                    .sort((a, b) => a.jornada - b.jornada)
-                    .map((m) => (
-                      <TableRow key={m.id}>
-                        <TableCell>
-                          <Badge variant="outline" className="font-display">J{m.jornada}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            {m.homeTeam}
-                            <span className="text-muted-foreground text-xs">vs</span>
-                            {m.awayTeam}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {m.date} · {m.time}
-                        </TableCell>
-                        <TableCell>
-                          <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <MapPin className="h-3 w-3" /> {m.location}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            m.status === "finalizado"
-                              ? "bg-muted text-muted-foreground"
-                              : m.status === "en_vivo"
-                              ? "bg-destructive/15 text-destructive"
-                              : "bg-primary/15 text-primary"
-                          }`}>
-                            {m.status === "programado" ? "Programado" : m.status === "en_vivo" ? "En Vivo" : "Finalizado"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                  {champMatches.sort((a, b) => a.jornada - b.jornada).map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell>
+                        <Badge variant="outline" className="font-display">J{m.jornada}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          {m.homeTeam}
+                          <span className="text-muted-foreground text-xs">vs</span>
+                          {m.awayTeam}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {m.date} · {m.time}
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <MapPin className="h-3 w-3" /> {m.location}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          m.status === "finalizado"
+                            ? "bg-muted text-muted-foreground"
+                            : m.status === "en_vivo"
+                            ? "bg-destructive/15 text-destructive"
+                            : "bg-primary/15 text-primary"
+                        }`}>
+                          {m.status === "programado" ? "Programado" : m.status === "en_vivo" ? "En Vivo" : "Finalizado"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
               {champMatches.length === 0 && (
-                <p className="text-center py-8 text-muted-foreground text-sm">
-                  No hay partidos programados
-                </p>
+                <p className="text-center py-8 text-muted-foreground text-sm">No hay partidos programados</p>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* GRUPOS TAB */}
+        {/* GRUPOS */}
         <TabsContent value="grupos" className="space-y-4">
           <div className="flex justify-end">
             <Dialog>
@@ -333,7 +321,9 @@ export default function AdminSupervisoresPage() {
                     <Button variant="outline">Cancelar</Button>
                   </DialogClose>
                   <DialogClose asChild>
-                    <Button onClick={handleCreateGroup}>Crear</Button>
+                    <Button onClick={() => toast({ title: "Grupo creado", description: "El grupo ha sido creado exitosamente (demo)." })}>
+                      Crear
+                    </Button>
                   </DialogClose>
                 </DialogFooter>
               </DialogContent>
@@ -367,9 +357,7 @@ export default function AdminSupervisoresPage() {
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    {g.teams.length} equipos en este grupo
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-3">{g.teams.length} equipos en este grupo</p>
                 </CardContent>
               </Card>
             ))}
@@ -379,12 +367,8 @@ export default function AdminSupervisoresPage() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <Layers className="h-10 w-10 text-muted-foreground/30 mb-3" />
-                <p className="text-sm text-muted-foreground">
-                  No hay grupos creados para este campeonato
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Crea grupos para organizar la fase clasificatoria
-                </p>
+                <p className="text-sm text-muted-foreground">No hay grupos creados para este campeonato</p>
+                <p className="text-xs text-muted-foreground mt-1">Crea grupos para organizar la fase clasificatoria</p>
               </CardContent>
             </Card>
           )}
