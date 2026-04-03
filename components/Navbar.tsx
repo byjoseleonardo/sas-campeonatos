@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Trophy, Menu, X } from "lucide-react";
+import { Trophy, Menu, X, LogIn } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -42,8 +42,11 @@ const Navbar = () => {
               {item.label}
             </Link>
           ))}
-          <Button size="sm" className="ml-4">
-            Iniciar Sesión
+          <Button size="sm" className="ml-4" asChild>
+            <Link href="/login">
+              <LogIn className="h-4 w-4 mr-1" />
+              Iniciar Sesión
+            </Link>
           </Button>
         </div>
 
@@ -73,8 +76,11 @@ const Navbar = () => {
               {item.label}
             </Link>
           ))}
-          <Button size="sm" className="mt-2 w-full">
-            Iniciar Sesión
+          <Button size="sm" className="mt-2 w-full" asChild>
+            <Link href="/login" onClick={() => setMobileOpen(false)}>
+              <LogIn className="h-4 w-4 mr-1" />
+              Iniciar Sesión
+            </Link>
           </Button>
         </div>
       )}
