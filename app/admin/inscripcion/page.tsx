@@ -55,15 +55,17 @@ export default function AdminDelegadoInscripcionPage() {
   const maxJugadores = 22;
 
   const handleInscribir = (player: {
-    name: string;
+    firstName: string;
+    lastName: string;
     dni: string;
     number: number;
     position: string;
     photoUrl: string | null;
   }) => {
+    const fullName = `${player.firstName} ${player.lastName}`;
     const newPlayer: Player = {
       id: `p${Date.now()}`,
-      name: player.name,
+      name: fullName,
       cedula: player.dni,
       position: player.position,
       number: player.number,
@@ -77,7 +79,7 @@ export default function AdminDelegadoInscripcionPage() {
     setLocalPlayers((prev) => [...prev, newPlayer]);
     toast({
       title: "Jugador inscrito",
-      description: `${player.name} ha sido registrado exitosamente.`,
+      description: `${fullName} ha sido registrado exitosamente.`,
     });
   };
 

@@ -123,7 +123,7 @@ export async function POST(
         teamId,
         number: data.number,
         position: data.position,
-        status: "pendiente",
+        status: "inscrito",
       },
       include: {
         player: {

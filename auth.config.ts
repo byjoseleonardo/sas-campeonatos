@@ -20,6 +20,14 @@ export const authConfig = {
         return Response.redirect(new URL("/delegado/cambiar-password", nextUrl));
       }
 
+      // Técnico va a su portal, no al admin
+      if (pathname.startsWith("/admin") && role === Role.tecnico) {
+        return Response.redirect(new URL("/tecnico/partidos", nextUrl));
+      }
+      if (pathname.startsWith("/tecnico") && role !== Role.tecnico) {
+        return Response.redirect(new URL("/admin", nextUrl));
+      }
+
       // Delegado no puede acceder al panel admin
       if (pathname.startsWith("/admin") && role === Role.delegado) {
         return Response.redirect(new URL("/delegado/inscripcion", nextUrl));

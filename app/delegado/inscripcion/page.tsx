@@ -148,26 +148,27 @@ export default function DelegadoInscripcionPage() {
 
   // Inscribir jugador
   const handleInscribir = async (player: {
-    name: string; dni: string; number: number; position: string; photoUrl: string | null;
+    firstName: string; lastName: string; dni: string; number: number; position: string;
+    photoUrl: string | null; birthDate?: string | null; gender?: string | null;
   }) => {
     if (!team?.id) return;
-    const [firstName, ...rest] = player.name.split(" ");
-    const lastName = rest.join(" ") || "—";
     try {
       const res = await fetch(`/api/delegado/team/${team.id}/roster`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           dni: player.dni,
-          firstName,
-          lastName,
+          firstName: player.firstName,
+          lastName: player.lastName,
           number: player.number,
           position: player.position,
+          birthDate: player.birthDate ?? undefined,
+          gender: player.gender ?? undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast({ title: "Jugador inscrito", description: `${player.name} fue registrado exitosamente.` });
+      toast({ title: "Jugador inscrito", description: `${player.firstName} ${player.lastName} fue registrado exitosamente.` });
       fetchRoster();
     } catch (e: unknown) {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Error al inscribir", variant: "destructive" });

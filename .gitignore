@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -44,3 +45,8 @@ next-env.d.ts
 
 /game-ace-manager/
 /lib/generated/prisma
+
+# Editor / agent tool directories
+.agents/
+.trae/
+skills-lock.json

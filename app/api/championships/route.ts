@@ -39,16 +39,28 @@ function slugify(text: string) {
     .replace(/\s+/g, "-");
 }
 
-// GET /api/championships
+// GET /api/championships?search=...&mine=true
 export async function GET(req: NextRequest) {
   try {
+    const session = await auth();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
+    const mine = searchParams.get("mine") === "true";
+
+    // Si mine=true y es organizador: filtrar solo sus campeonatos
+    const userId = session?.user?.id;
+    const role = session?.user?.role;
+    const filterByOrg = mine && userId && role === "organizador";
+
+    const where = {
+      ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}),
+      ...(filterByOrg ? {
+        userRoles: { some: { userId, role: Role.organizador } },
+      } : {}),
+    };
 
     const championships = await prisma.championship.findMany({
-      where: search
-        ? { name: { contains: search, mode: "insensitive" } }
-        : {},
+      where,
       include: {
         createdBy: { select: { id: true, name: true } },
         userRoles: {
@@ -72,6 +84,9 @@ export async function POST(req: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+    if (session.user.role !== "administrador") {
+      return NextResponse.json({ error: "Solo el administrador puede crear campeonatos" }, { status: 403 });
     }
 
     const body = await req.json();

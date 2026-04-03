@@ -22,12 +22,14 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
-import { Plus, Search, Pencil, Trash2, Loader2, MapPin, Clock, Users, ArrowRightLeft, KeyRound } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Loader2, MapPin, Clock, Users, MoreHorizontal, KeyRound, ClipboardList, Layers } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sport, ChampionshipFormat, ChampionshipStatus } from "@/lib/generated/prisma/enums";
+import { useSession } from "next-auth/react";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -82,9 +84,10 @@ const sportLabels: Record<Sport, string> = {
 };
 
 const formatLabels: Record<ChampionshipFormat, string> = {
-  liga: "Liga (todos contra todos)",
-  eliminacion: "Eliminación directa",
+  liga:               "Liga (todos contra todos)",
+  eliminacion:        "Eliminación directa",
   grupos_eliminacion: "Grupos + Eliminación",
+  personalizado:      "Personalizado",
 };
 
 const statusLabels: Record<ChampionshipStatus, string> = {
@@ -344,12 +347,15 @@ export default function AdminChampionshipsPage() {
   const [organizadores, setOrganizadores] = useState<UserOption[]>([]);
   const [tecnicos, setTecnicos] = useState<UserOption[]>([]);
   const { toast } = useToast();
+  const { data: session, status: sessionStatus } = useSession();
+  const isAdmin = session?.user?.role === "administrador";
 
   const fetchChampionships = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
+      if (!isAdmin) params.set("mine", "true");
       const res = await fetch(`/api/championships?${params}`);
       const data = await res.json();
       setChampionships(Array.isArray(data) ? data : []);
@@ -358,9 +364,11 @@ export default function AdminChampionshipsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, toast]);
+  }, [search, toast, isAdmin]);
 
-  useEffect(() => { fetchChampionships(); }, [fetchChampionships]);
+  useEffect(() => {
+    if (sessionStatus !== "loading") fetchChampionships();
+  }, [fetchChampionships, sessionStatus]);
 
   useEffect(() => {
     fetch("/api/users?role=organizador")
@@ -490,11 +498,18 @@ export default function AdminChampionshipsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-4xl text-foreground">CAMPEONATOS</h1>
-          <p className="text-muted-foreground text-sm mt-1">Crea y gestiona los campeonatos del sistema</p>
+          <h1 className="font-display text-4xl text-foreground">
+            {isAdmin ? "CAMPEONATOS" : "MIS CAMPEONATOS"}
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            {isAdmin
+              ? "Crea y gestiona los campeonatos del sistema"
+              : "Campeonatos asignados a ti como organizador"}
+          </p>
         </div>
 
-        {/* CREATE DIALOG */}
+        {/* CREATE DIALOG — solo admin */}
+        {isAdmin && (
         <Dialog open={createOpen} onOpenChange={(v) => { setCreateOpen(v); if (!v) setForm(emptyForm); }}>
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-1" /> Nuevo Campeonato</Button>
@@ -520,6 +535,7 @@ export default function AdminChampionshipsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {/* EDIT DIALOG */}
@@ -640,49 +656,73 @@ export default function AdminChampionshipsPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {statusTransitions[c.status].length > 0 && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Cambiar estado">
-                                  <ArrowRightLeft className="h-3.5 w-3.5" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                                  Cambiar estado
-                                </DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                {statusTransitions[c.status].map((s) => (
-                                  <DropdownMenuItem
-                                    key={s}
-                                    onClick={() => handleStatusChange(c.id, s)}
-                                  >
-                                    <span className={`mr-2 h-2 w-2 rounded-full ${statusBadge[s].split(" ")[0]}`} />
-                                    {statusLabels[s]}
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                          {c.maxEquipos > 0 && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Ver cupos" asChild>
-                              <Link href={`/admin/campeonatos/${c.id}/cupos`}>
-                                <KeyRound className="h-3.5 w-3.5" />
-                              </Link>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
-                          )}
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(c)}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost" size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => setDeleteId(c.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-52">
+                            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                              {c.name}
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+
+                            {/* Cambiar estado */}
+                            {statusTransitions[c.status].length > 0 && (
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>Cambiar estado</DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent>
+                                  {statusTransitions[c.status].map((s) => (
+                                    <DropdownMenuItem key={s} onClick={() => handleStatusChange(c.id, s)}>
+                                      <span className={`mr-2 h-2 w-2 rounded-full inline-block ${statusBadge[s].split(" ")[0]}`} />
+                                      {statusLabels[s]}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                            )}
+
+                            <DropdownMenuSeparator />
+
+                            {/* Navegación */}
+                            {c.format === "personalizado" && (
+                              <DropdownMenuItem asChild>
+                                <Link href={`/admin/campeonatos/${c.id}/fases`} className="flex items-center gap-2">
+                                  <Layers className="h-3.5 w-3.5" /> Gestionar fases
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
+                            {c.maxEquipos > 0 && (
+                              <DropdownMenuItem asChild>
+                                <Link href={`/admin/campeonatos/${c.id}/cupos`} className="flex items-center gap-2">
+                                  <KeyRound className="h-3.5 w-3.5" /> Ver delegados
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem asChild>
+                              <Link href={`/admin/campeonatos/${c.id}/planillas`} className="flex items-center gap-2">
+                                <ClipboardList className="h-3.5 w-3.5" /> Ver planillas
+                              </Link>
+                            </DropdownMenuItem>
+
+                            {/* Solo admin */}
+                            {isAdmin && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => openEdit(c)} className="flex items-center gap-2">
+                                  <Pencil className="h-3.5 w-3.5" /> Editar campeonato
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => setDeleteId(c.id)}
+                                  className="text-destructive focus:text-destructive flex items-center gap-2"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" /> Eliminar campeonato
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   );

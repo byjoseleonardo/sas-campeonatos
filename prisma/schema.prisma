@@ -30,6 +30,21 @@ enum ChampionshipFormat {
   liga
   eliminacion
   grupos_eliminacion
+  personalizado
+}
+
+enum PhaseType {
+  todos_contra_todos
+  grupos
+  eliminacion
+  final
+}
+
+enum EliminacionRound {
+  dieciseisavos
+  octavos
+  cuartos
+  semifinal
 }
 
 enum Sport {
@@ -171,6 +186,7 @@ model Championship {
   // Relaciones
   userRoles  UserRole[]
   teams      Team[]
+  phases     Phase[]
   jornadas   Jornada[]
   groups     Group[]
   standings  Standing[]
@@ -180,6 +196,51 @@ model Championship {
   supervisors User[] @relation("SupervisorChampionship")
 
   @@map("championships")
+}
+
+// ─────────────────────────────────────────────
+// FASES (campeonato personalizado)
+// ─────────────────────────────────────────────
+
+model Phase {
+  id             String    @id @default(cuid())
+  championshipId String
+  name           String
+  type           PhaseType
+  order          Int
+  legsPerMatch   Int       @default(1)
+
+  // Para tipo grupos
+  numGroups      Int?
+  teamsPerGroup  Int?
+  teamsAdvance   Int?      // cuántos clasifican por grupo
+
+  // Para tipo eliminacion
+  startingRound  EliminacionRound?
+  hasThirdPlace  Boolean   @default(false)
+
+  createdAt      DateTime  @default(now())
+
+  championship   Championship @relation(fields: [championshipId], references: [id], onDelete: Cascade)
+  matches        Match[]
+  qualifiers     PhaseQualifier[]
+
+  @@unique([championshipId, order])
+  @@map("phases")
+}
+
+model PhaseQualifier {
+  id        String  @id @default(cuid())
+  phaseId   String
+  teamId    String
+  groupName String?
+  position  Int
+
+  phase Phase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  team  Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([phaseId, teamId])
+  @@map("phase_qualifiers")
 }
 
 // ─────────────────────────────────────────────
@@ -202,13 +263,14 @@ model Team {
   delegate     User?        @relation("DelegateTeam", fields: [delegateId], references: [id], onDelete: SetNull)
 
   // Relaciones
-  userRoles   UserRole[]
+  userRoles     UserRole[]
   rosterEntries RosterEntry[]
-  homeMatches  Match[]      @relation("HomeTeam")
-  awayMatches  Match[]      @relation("AwayTeam")
-  groupTeams   GroupTeam[]
-  standings    Standing[]
-  matchEvents  MatchEvent[]
+  homeMatches   Match[]      @relation("HomeTeam")
+  awayMatches   Match[]      @relation("AwayTeam")
+  groupTeams    GroupTeam[]
+  standings     Standing[]
+  matchEvents   MatchEvent[]
+  qualifications PhaseQualifier[]
 
   @@unique([name, championshipId])
   @@map("teams")
@@ -302,6 +364,10 @@ model Match {
   endedAt        DateTime?
   currentMinute  Int?
 
+  // Fase (campeonato personalizado)
+  phaseId       String?
+  roundLabel    String?   // etiqueta libre: "Jornada 1", "Cuartos A", etc.
+
   // Responsables
   tecnicoId     String?
   supervisorId  String?
@@ -313,6 +379,7 @@ model Match {
   updatedAt DateTime @updatedAt
 
   championship Championship @relation(fields: [championshipId], references: [id], onDelete: Cascade)
+  phase        Phase?       @relation(fields: [phaseId], references: [id], onDelete: SetNull)
   jornada      Jornada?     @relation(fields: [jordanaId], references: [id], onDelete: SetNull)
   group        Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
   homeTeam     Team         @relation("HomeTeam", fields: [homeTeamId], references: [id])

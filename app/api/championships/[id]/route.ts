@@ -61,6 +61,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = await req.json();
     const data = updateSchema.parse(body);
 
+    // El organizador solo puede cambiar el estado de sus campeonatos
+    const isAdmin = session.user.role === "administrador";
+    const isStatusOnly = Object.keys(body).length === 1 && "status" in body;
+    if (!isAdmin && !isStatusOnly) {
+      return NextResponse.json({ error: "Solo el administrador puede editar campeonatos" }, { status: 403 });
+    }
+
     const existing = await prisma.championship.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: "Campeonato no encontrado" }, { status: 404 });
@@ -140,6 +147,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+    if (session.user.role !== "administrador") {
+      return NextResponse.json({ error: "Solo el administrador puede eliminar campeonatos" }, { status: 403 });
     }
 
     const { id } = await params;

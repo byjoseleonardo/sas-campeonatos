@@ -11,8 +11,14 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import { Plus, UserPlus, Camera, Search, Loader2, CheckCircle2, XCircle } from "lucide-react";
-import { lookupDni, type CitizenRecord } from "@/lib/dniDatabase";
 import { useToast } from "@/hooks/use-toast";
+
+interface LookupResult {
+  firstName: string;
+  lastName: string;
+  birthDate: string | null;
+  gender: string | null;
+}
 
 interface PlayerInscriptionFormProps {
   teamName: string;
@@ -21,13 +27,14 @@ interface PlayerInscriptionFormProps {
   maxPlayers: number;
   positionOptions: string[];
   onInscribir: (player: {
-    name: string;
+    firstName: string;
+    lastName: string;
     dni: string;
     number: number;
     position: string;
     photoUrl: string | null;
-    birthDate?: string;
-    gender?: string;
+    birthDate?: string | null;
+    gender?: string | null;
   }) => void;
 }
 
@@ -41,8 +48,14 @@ const PlayerInscriptionForm = ({
 }: PlayerInscriptionFormProps) => {
   const [open, setOpen] = useState(false);
   const [dni, setDni] = useState("");
-  const [lookupResult, setLookupResult] = useState<CitizenRecord | null>(null);
+  const [lookupResult, setLookupResult] = useState<LookupResult | null>(null);
   const [lookupStatus, setLookupStatus] = useState<"idle" | "loading" | "found" | "not_found">("idle");
+  // Campos manuales (cuando el jugador no está en el sistema)
+  const [manualFirstName, setManualFirstName] = useState("");
+  const [manualLastName, setManualLastName] = useState("");
+  const [manualBirthDate, setManualBirthDate] = useState("");
+  const [manualGender, setManualGender] = useState("");
+  // Campos comunes
   const [playerNumber, setPlayerNumber] = useState("");
   const [position, setPosition] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -52,32 +65,39 @@ const PlayerInscriptionForm = ({
     setDni("");
     setLookupResult(null);
     setLookupStatus("idle");
+    setManualFirstName("");
+    setManualLastName("");
+    setManualBirthDate("");
+    setManualGender("");
     setPlayerNumber("");
     setPosition("");
     setPhotoPreview(null);
   };
 
   const handleDniSearch = async () => {
-    if (dni.length < 8) {
-      toast({ title: "DNI inválido", description: "Ingresa al menos 8 dígitos.", variant: "destructive" });
+    if (dni.length < 6) {
+      toast({ title: "DNI inválido", description: "Ingresa al menos 6 dígitos.", variant: "destructive" });
       return;
     }
     setLookupStatus("loading");
-    const result = await lookupDni(dni);
-    if (result) {
-      setLookupResult(result);
-      setLookupStatus("found");
-    } else {
+    try {
+      const res = await fetch(`/api/players/lookup?dni=${encodeURIComponent(dni)}`);
+      const data = await res.json();
+      if (data) {
+        setLookupResult(data);
+        setLookupStatus("found");
+      } else {
+        setLookupResult(null);
+        setLookupStatus("not_found");
+      }
+    } catch {
       setLookupResult(null);
       setLookupStatus("not_found");
     }
   };
 
   const handleDniKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleDniSearch();
-    }
+    if (e.key === "Enter") { e.preventDefault(); handleDniSearch(); }
   };
 
   const handlePhotoCapture = () => {
@@ -87,23 +107,30 @@ const PlayerInscriptionForm = ({
     toast({ title: "Foto capturada", description: "La foto del jugador ha sido tomada (demo)." });
   };
 
+  const canSubmit = () => {
+    if (!playerNumber || !position) return false;
+    if (lookupStatus === "found") return true;
+    if (lookupStatus === "not_found") return !!manualFirstName.trim() && !!manualLastName.trim();
+    return false;
+  };
+
   const handleSubmit = () => {
-    if (!lookupResult || !position || !playerNumber) {
+    if (!canSubmit()) {
       toast({ title: "Campos incompletos", description: "Completa todos los campos requeridos.", variant: "destructive" });
       return;
     }
-    onInscribir({
-      name: lookupResult.fullName,
-      dni: lookupResult.dni,
-      number: parseInt(playerNumber),
-      position,
-      photoUrl: photoPreview,
-      birthDate: lookupResult.birthDate,
-      gender: lookupResult.gender,
-    });
+
+    const firstName = lookupStatus === "found" ? lookupResult!.firstName : manualFirstName.trim();
+    const lastName  = lookupStatus === "found" ? lookupResult!.lastName  : manualLastName.trim();
+    const birthDate = lookupStatus === "found" ? lookupResult!.birthDate : manualBirthDate || null;
+    const gender    = lookupStatus === "found" ? lookupResult!.gender    : manualGender || null;
+
+    onInscribir({ firstName, lastName, dni, number: parseInt(playerNumber), position, photoUrl: photoPreview, birthDate, gender });
     resetForm();
     setOpen(false);
   };
+
+  const showFields = lookupStatus === "found" || lookupStatus === "not_found";
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
@@ -120,6 +147,7 @@ const PlayerInscriptionForm = ({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
+
           {/* DNI Lookup */}
           <div className="space-y-2">
             <Label>Cédula / DNI</Label>
@@ -129,10 +157,7 @@ const PlayerInscriptionForm = ({
                 value={dni}
                 onChange={(e) => {
                   setDni(e.target.value.replace(/\D/g, ""));
-                  if (lookupStatus !== "idle") {
-                    setLookupStatus("idle");
-                    setLookupResult(null);
-                  }
+                  if (lookupStatus !== "idle") { setLookupStatus("idle"); setLookupResult(null); }
                 }}
                 onKeyDown={handleDniKeyDown}
                 maxLength={13}
@@ -141,68 +166,95 @@ const PlayerInscriptionForm = ({
               <Button
                 variant="secondary"
                 onClick={handleDniSearch}
-                disabled={lookupStatus === "loading" || dni.length < 8}
+                disabled={lookupStatus === "loading" || dni.length < 6}
                 className="shrink-0 gap-1.5"
               >
-                {lookupStatus === "loading" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Search className="h-4 w-4" />
-                )}
+                {lookupStatus === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 Consultar
               </Button>
             </div>
           </div>
 
+          {/* Encontrado en el sistema */}
           {lookupStatus === "found" && lookupResult && (
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
               <div className="flex items-center gap-2 text-primary">
                 <CheckCircle2 className="h-4 w-4" />
-                <span className="text-sm font-medium">Ciudadano encontrado</span>
+                <span className="text-sm font-medium">Jugador encontrado en el sistema</span>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                 <div>
-                  <p className="text-muted-foreground text-xs">Nombre completo</p>
-                  <p className="font-medium text-foreground">{lookupResult.fullName}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Fecha de nacimiento</p>
-                  <p className="font-medium text-foreground">{lookupResult.birthDate}</p>
+                  <p className="text-muted-foreground text-xs">Nombre</p>
+                  <p className="font-medium">{lookupResult.firstName} {lookupResult.lastName}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-xs">DNI</p>
-                  <p className="font-mono text-foreground">{lookupResult.dni}</p>
+                  <p className="font-mono">{dni}</p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Género</p>
-                  <p className="font-medium text-foreground">{lookupResult.gender === "M" ? "Masculino" : "Femenino"}</p>
-                </div>
+                {lookupResult.birthDate && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Fecha de nacimiento</p>
+                    <p className="font-medium">
+                      {new Date(lookupResult.birthDate).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+                )}
+                {lookupResult.gender && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Género</p>
+                    <p className="font-medium">{lookupResult.gender === "M" ? "Masculino" : "Femenino"}</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
+          {/* No encontrado — ingreso manual */}
           {lookupStatus === "not_found" && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex items-center gap-3">
-              <XCircle className="h-5 w-5 text-destructive shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-destructive">No se encontró el DNI</p>
-                <p className="text-xs text-muted-foreground">Verifica el número e intenta de nuevo</p>
+            <>
+              <div className="rounded-lg border border-amber-400/40 bg-amber-400/5 p-3 flex items-center gap-3">
+                <XCircle className="h-5 w-5 text-amber-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Jugador no encontrado</p>
+                  <p className="text-xs text-muted-foreground">Ingresa los datos manualmente para registrarlo</p>
+                </div>
               </div>
-            </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Nombre <span className="text-destructive">*</span></Label>
+                  <Input placeholder="Ej: Roberto" value={manualFirstName} onChange={(e) => setManualFirstName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Apellido <span className="text-destructive">*</span></Label>
+                  <Input placeholder="Ej: Sánchez" value={manualLastName} onChange={(e) => setManualLastName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Fecha de nacimiento</Label>
+                  <Input type="date" value={manualBirthDate} onChange={(e) => setManualBirthDate(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Género</Label>
+                  <Select value={manualGender} onValueChange={setManualGender}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="M">Masculino</SelectItem>
+                      <SelectItem value="F">Femenino</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
           )}
 
-          {lookupStatus === "found" && (
+          {/* Número y posición (visible cuando ya se hizo lookup) */}
+          {showFields && (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Número de camiseta</Label>
                   <Input
-                    type="number"
-                    placeholder="10"
-                    min={1}
-                    max={99}
-                    value={playerNumber}
-                    onChange={(e) => setPlayerNumber(e.target.value)}
+                    type="number" placeholder="10" min={1} max={99}
+                    value={playerNumber} onChange={(e) => setPlayerNumber(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
@@ -210,9 +262,7 @@ const PlayerInscriptionForm = ({
                   <Select value={position} onValueChange={setPosition}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                     <SelectContent>
-                      {positionOptions.map((p) => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
-                      ))}
+                      {positionOptions.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -245,12 +295,8 @@ const PlayerInscriptionForm = ({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => { resetForm(); setOpen(false); }}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSubmit} disabled={lookupStatus !== "found" || !position || !playerNumber}>
-            Inscribir
-          </Button>
+          <Button variant="outline" onClick={() => { resetForm(); setOpen(false); }}>Cancelar</Button>
+          <Button onClick={handleSubmit} disabled={!canSubmit()}>Inscribir</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
