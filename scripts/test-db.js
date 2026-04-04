@@ -1,27 +1,16 @@
 require("dotenv/config");
 const { Client } = require("pg");
 
-const urls = {
-  DIRECT_URL: process.env.DIRECT_URL,
-  DATABASE_URL: process.env.DATABASE_URL,
-};
-
-async function testConnection(name, url) {
-  if (!url) { console.log(name, "-> NO DEFINIDA"); return; }
-  const clean = url.replace(/:[^:@]+@/, ":***@");
+async function test(name, url) {
   console.log(`\n--- ${name} ---`);
-  console.log("URL:", clean);
-
   const c = new Client({
-    connectionString: url.split("?")[0],
+    connectionString: url,
     ssl: { rejectUnauthorized: false },
   });
-
   try {
     await c.connect();
     const r = await c.query("SELECT 1 as test");
-    console.log("RESULTADO:", r.rows[0]);
-    console.log("CONECTADO OK");
+    console.log("OK:", r.rows[0]);
     await c.end();
   } catch (e) {
     console.error("ERROR:", e.message);
@@ -29,6 +18,7 @@ async function testConnection(name, url) {
 }
 
 (async () => {
-  await testConnection("DIRECT_URL", urls.DIRECT_URL);
-  await testConnection("DATABASE_URL", urls.DATABASE_URL);
+  await test("DIRECT", "postgresql://postgres:F86bWtVtN84yGoEm@db.cbewrmpizccdhgqxugjk.supabase.co:5432/postgres");
+  await test("POOLER_5432", "postgresql://postgres.cbewrmpizccdhgqxugjk:F86bWtVtN84yGoEm@aws-1-sa-east-1.pooler.supabase.com:5432/postgres");
+  await test("POOLER_6543", "postgresql://postgres.cbewrmpizccdhgqxugjk:F86bWtVtN84yGoEm@aws-1-sa-east-1.pooler.supabase.com:6543/postgres");
 })();
