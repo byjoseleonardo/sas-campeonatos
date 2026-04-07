@@ -12,10 +12,11 @@ datasource db {
 // ─────────────────────────────────────────────
 
 enum Role {
+  superadministrador
   administrador
   organizador
   supervisor
-  tecnico
+  tecnico_mesa
   delegado
 }
 
@@ -104,10 +105,12 @@ enum MatchRound {
 // ─────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  password  String   // hashed
+  id                String   @id @default(cuid())
+  email             String   @unique
+  firstName         String
+  paternalLastName  String
+  maternalLastName  String?
+  password          String   // hashed
   phone     String?
   dni       String?  @unique
   avatarUrl          String?
@@ -119,6 +122,11 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
+  // Tenant: el admin que "posee" este usuario (aplica a organizadores)
+  adminId   String?
+  admin     User?   @relation("AdminOrganizers", fields: [adminId], references: [id], onDelete: SetNull)
+  organizers User[] @relation("AdminOrganizers")
+
   // Roles asignados (un usuario puede tener varios)
   userRoles UserRole[]
 
@@ -129,6 +137,7 @@ model User {
   recordedEvents          MatchEvent[]   @relation("EventRecordedBy")
   validatedRosters        RosterEntry[]  @relation("ValidatedBy")
   createdChampionships    Championship[] @relation("ChampionshipCreatedBy")
+  adminedChampionships    Championship[] @relation("AdminChampionships")
 
   @@map("users")
 }
@@ -178,10 +187,13 @@ model Championship {
   maxInscripciones Int @default(22)
 
   createdById String
+  // Admin que posee este campeonato (para aislamiento por tenant)
+  adminId     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  createdBy User @relation("ChampionshipCreatedBy", fields: [createdById], references: [id])
+  createdBy User  @relation("ChampionshipCreatedBy", fields: [createdById], references: [id])
+  admin     User? @relation("AdminChampionships", fields: [adminId], references: [id], onDelete: SetNull)
 
   // Relaciones
   userRoles  UserRole[]
@@ -281,11 +293,12 @@ model Team {
 // ─────────────────────────────────────────────
 
 model Player {
-  id         String   @id @default(cuid())
-  dni        String   @unique
-  firstName  String
-  lastName   String
-  birthDate  DateTime?
+  id               String    @id @default(cuid())
+  dni              String    @unique
+  firstName        String
+  paternalLastName String
+  maternalLastName String?
+  birthDate        DateTime?
   gender     String?   // "M" | "F"
   photoUrl   String?
   phone      String?

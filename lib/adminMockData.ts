@@ -32,7 +32,7 @@ export interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: "organizador" | "supervisor" | "tecnico" | "delegado";
+  role: "organizador" | "supervisor" | "tecnico_mesa" | "delegado";
   championshipId?: string;
   championshipName?: string;
   teamId?: string;
@@ -44,26 +44,26 @@ export interface AdminUser {
 export const adminUsers: AdminUser[] = [
   { id: "u1", name: "Carlos Méndez", email: "carlos@champzone.com", role: "organizador", status: "activo", createdAt: "01 Ene 2026" },
   { id: "u2", name: "María López", email: "maria@champzone.com", role: "supervisor", championshipId: "1", championshipName: "Copa Primavera 2026", status: "activo", createdAt: "05 Feb 2026" },
-  { id: "u3", name: "Pedro Ruiz", email: "pedro@champzone.com", role: "tecnico", championshipId: "4", championshipName: "Copa Nocturna", status: "activo", createdAt: "10 Feb 2026" },
+  { id: "u3", name: "Pedro Ruiz", email: "pedro@champzone.com", role: "tecnico_mesa", championshipId: "4", championshipName: "Copa Nocturna", status: "activo", createdAt: "10 Feb 2026" },
   { id: "u4", name: "Ana García", email: "ana@champzone.com", role: "delegado", championshipId: "1", championshipName: "Copa Primavera 2026", teamId: "1", teamName: "Águilas FC", status: "activo", createdAt: "12 Feb 2026" },
   { id: "u5", name: "Luis Torres", email: "luis@champzone.com", role: "delegado", championshipId: "1", championshipName: "Copa Primavera 2026", teamId: "2", teamName: "Leones SC", status: "activo", createdAt: "12 Feb 2026" },
   { id: "u6", name: "Sofía Herrera", email: "sofia@champzone.com", role: "delegado", championshipId: "2", championshipName: "Liga Interbarrial", teamId: "3", teamName: "Tigres United", status: "inactivo", createdAt: "15 Feb 2026" },
   { id: "u7", name: "Juan Paredes", email: "juan@champzone.com", role: "organizador", status: "activo", createdAt: "01 Ene 2026" },
-  { id: "u8", name: "Rosa Delgado", email: "rosa@champzone.com", role: "tecnico", championshipId: "2", championshipName: "Liga Interbarrial", status: "inactivo", createdAt: "20 Feb 2026" },
+  { id: "u8", name: "Rosa Delgado", email: "rosa@champzone.com", role: "tecnico_mesa", championshipId: "2", championshipName: "Liga Interbarrial", status: "inactivo", createdAt: "20 Feb 2026" },
   { id: "u9", name: "Diego Salazar", email: "diego@champzone.com", role: "supervisor", championshipId: "4", championshipName: "Copa Nocturna", status: "activo", createdAt: "08 Feb 2026" },
 ];
 
 export const roleLabels: Record<AdminUser["role"], string> = {
   organizador: "Organizador",
   supervisor: "Supervisor",
-  tecnico: "Técnico",
+  tecnico_mesa: "Técnico de Mesa",
   delegado: "Delegado",
 };
 
 export const roleBadgeVariants: Record<AdminUser["role"], string> = {
   organizador: "bg-primary/15 text-primary border-primary/30",
   supervisor: "bg-blue-500/15 text-blue-600 border-blue-500/30",
-  tecnico: "bg-accent/15 text-accent-foreground border-accent/30",
+  tecnico_mesa: "bg-accent/15 text-accent-foreground border-accent/30",
   delegado: "bg-secondary/80 text-secondary-foreground border-secondary",
 };
 

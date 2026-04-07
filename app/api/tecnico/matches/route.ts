@@ -8,11 +8,11 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-    if (session.user.role !== Role.tecnico) return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
+    if (session.user.role !== Role.tecnico_mesa) return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
 
     // Campeonatos asignados al técnico
     const roles = await prisma.userRole.findMany({
-      where: { userId: session.user.id, role: Role.tecnico },
+      where: { userId: session.user.id, role: Role.tecnico_mesa },
       select: { championshipId: true },
     });
 

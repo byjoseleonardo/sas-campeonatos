@@ -32,7 +32,9 @@ interface Cupo {
   id: string;
   user: {
     id: string;
-    name: string;
+    firstName: string;
+    paternalLastName: string;
+    maternalLastName?: string | null;
     email: string;
     tempPassword: string | null;
     isActive: boolean;
@@ -73,7 +75,7 @@ function CopyButton({ text }: { text: string }) {
 
 export default function AdminDelegadosPage() {
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "administrador";
+  const isOrganizador = session?.user?.role === "organizador";
   const { toast } = useToast();
 
   const [championships, setChampionships] = useState<Championship[]>([]);
@@ -88,10 +90,9 @@ export default function AdminDelegadosPage() {
   const [wsPhone, setWsPhone] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Cargar campeonatos (admin = todos, organizador = solo los suyos)
+  // Cargar campeonatos filtrados por sesión (la API filtra automáticamente según rol)
   useEffect(() => {
-    const url = isAdmin ? "/api/championships" : "/api/championships?mine=true";
-    fetch(url)
+    fetch("/api/championships")
       .then((r) => r.json())
       .then((d) => {
         const list = Array.isArray(d) ? d : [];
@@ -99,7 +100,7 @@ export default function AdminDelegadosPage() {
         if (list.length > 0) setSelectedId(list[0].id);
       })
       .finally(() => setLoadingChamps(false));
-  }, [isAdmin]);
+  }, []);
 
   // Cargar cupos del campeonato seleccionado
   const fetchCupos = useCallback(async () => {
@@ -192,7 +193,7 @@ export default function AdminDelegadosPage() {
             <Shield className="h-10 w-10 text-muted-foreground/30" />
             <p className="font-medium">No tienes campeonatos asignados</p>
             <p className="text-sm text-muted-foreground">
-              {isAdmin ? "Crea un campeonato para comenzar." : "El administrador debe asignarte como organizador de un campeonato."}
+              {isOrganizador ? "Crea un campeonato para ver sus delegados aquí." : "No hay campeonatos disponibles."}
             </p>
           </CardContent>
         </Card>
@@ -292,7 +293,7 @@ export default function AdminDelegadosPage() {
                         <TableCell>
                           {configured ? (
                             <div>
-                              <p className="text-sm font-medium">{cupo.user.name}</p>
+                              <p className="text-sm font-medium">{[cupo.user.firstName, cupo.user.paternalLastName, cupo.user.maternalLastName].filter(Boolean).join(" ")}</p>
                               <p className="text-xs text-muted-foreground font-mono">{cupo.user.email}</p>
                             </div>
                           ) : (

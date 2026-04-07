@@ -19,7 +19,6 @@ const updateSchema = z.object({
   maxInscripciones: z.number().int().min(1).optional(),
   maxEquipos: z.number().int().min(0).optional(),
   minSuplentes: z.number().int().min(0).optional(),
-  organizadorId: z.string().nullable().optional(),
   tecnicoIds: z.array(z.string()).optional(),
 });
 
@@ -30,9 +29,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const championship = await prisma.championship.findUnique({
       where: { id },
       include: {
-        createdBy: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, paternalLastName: true } },
         userRoles: {
-          include: { user: { select: { id: true, name: true, email: true } } },
+          include: { user: { select: { id: true, firstName: true, paternalLastName: true, email: true } } },
         },
         _count: { select: { teams: true } },
       },
@@ -61,11 +60,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = await req.json();
     const data = updateSchema.parse(body);
 
-    // El organizador solo puede cambiar el estado de sus campeonatos
-    const isAdmin = session.user.role === "administrador";
-    const isStatusOnly = Object.keys(body).length === 1 && "status" in body;
-    if (!isAdmin && !isStatusOnly) {
-      return NextResponse.json({ error: "Solo el administrador puede editar campeonatos" }, { status: 403 });
+    const isOrganizador = session.user.role === "organizador";
+    if (!isOrganizador) {
+      return NextResponse.json({ error: "Solo el organizador puede editar campeonatos" }, { status: 403 });
     }
 
     const existing = await prisma.championship.findUnique({ where: { id } });
@@ -73,7 +70,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "Campeonato no encontrado" }, { status: 404 });
     }
 
-    const { organizadorId, tecnicoIds, startDate, endDate, ...fields } = data;
+    // Verificar que el organizador sea dueño del campeonato
+    const ownerRole = await prisma.userRole.findFirst({
+      where: { userId: session.user.id, role: Role.organizador, championshipId: id },
+    });
+    if (!ownerRole) {
+      return NextResponse.json({ error: "No tienes permiso para editar este campeonato" }, { status: 403 });
+    }
+
+    const { tecnicoIds, startDate, endDate, ...fields } = data;
 
     const championship = await prisma.championship.update({
       where: { id },
@@ -83,35 +88,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         endDate: endDate !== undefined ? (endDate ? new Date(endDate) : null) : undefined,
       },
       include: {
-        createdBy: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, paternalLastName: true } },
         _count: { select: { teams: true } },
       },
     });
 
-    // Actualizar asignación de organizador
-    if (organizadorId !== undefined) {
-      // Desasignar organizador anterior
-      await prisma.userRole.updateMany({
-        where: { championshipId: id, role: Role.organizador },
-        data: { championshipId: null },
-      });
-      if (organizadorId) {
-        await prisma.userRole.updateMany({
-          where: { userId: organizadorId, role: Role.organizador },
-          data: { championshipId: id },
-        });
-      }
-    }
-
     // Actualizar técnicos asignados
     if (tecnicoIds !== undefined) {
       await prisma.userRole.updateMany({
-        where: { championshipId: id, role: Role.tecnico },
+        where: { championshipId: id, role: Role.tecnico_mesa },
         data: { championshipId: null },
       });
       if (tecnicoIds.length) {
         await prisma.userRole.updateMany({
-          where: { userId: { in: tecnicoIds }, role: Role.tecnico },
+          where: { userId: { in: tecnicoIds }, role: Role.tecnico_mesa },
           data: { championshipId: id },
         });
       }
@@ -148,14 +138,22 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
-    if (session.user.role !== "administrador") {
-      return NextResponse.json({ error: "Solo el administrador puede eliminar campeonatos" }, { status: 403 });
+    if (session.user.role !== "organizador") {
+      return NextResponse.json({ error: "Solo el organizador puede eliminar campeonatos" }, { status: 403 });
     }
 
     const { id } = await params;
     const existing = await prisma.championship.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: "Campeonato no encontrado" }, { status: 404 });
+    }
+
+    // Verificar que el organizador sea dueño
+    const ownerRole = await prisma.userRole.findFirst({
+      where: { userId: session.user.id, role: Role.organizador, championshipId: id },
+    });
+    if (!ownerRole) {
+      return NextResponse.json({ error: "No tienes permiso para eliminar este campeonato" }, { status: 403 });
     }
 
     await prisma.championship.delete({ where: { id } });

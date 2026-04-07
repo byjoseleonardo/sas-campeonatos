@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-interface Player { id: string; firstName: string; lastName: string; dni?: string }
+interface Player { id: string; firstName: string; paternalLastName: string; maternalLastName?: string | null; dni?: string }
 interface Team   { id: string; name: string }
 
 interface RosterEntry {
@@ -359,7 +359,7 @@ export default function MatchControlPage({
                   <span className="text-lg shrink-0">{eventIcon[ev.eventType]}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">
-                      {ev.player.firstName} {ev.player.lastName}
+                      {[ev.player.firstName, ev.player.paternalLastName].filter(Boolean).join(" ")}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {eventLabels[ev.eventType]} · {ev.team.name}
@@ -424,7 +424,7 @@ export default function MatchControlPage({
                 <SelectContent>
                   {selectedRoster.map((r) => (
                     <SelectItem key={r.player.id} value={r.player.id}>
-                      #{r.number} {r.player.firstName} {r.player.lastName}
+                      #{r.number} {[r.player.firstName, r.player.paternalLastName].filter(Boolean).join(" ")}
                     </SelectItem>
                   ))}
                 </SelectContent>

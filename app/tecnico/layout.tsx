@@ -21,7 +21,7 @@ export default function TecnicoLayout({ children }: { children: React.ReactNode 
             CHAMP<span className="text-primary">ZONE</span>
           </span>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-muted-foreground">Portal Técnico</span>
+          <span className="text-sm font-medium text-muted-foreground">Portal Técnico de Mesa</span>
         </div>
         <button
           onClick={() => signOut({ redirectTo: "/" })}

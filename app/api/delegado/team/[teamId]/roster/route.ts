@@ -6,11 +6,12 @@ import { z } from "zod";
 const addPlayerSchema = z.object({
   dni: z.string().min(6, "DNI inválido"),
   firstName: z.string().min(2),
-  lastName: z.string().min(2),
-  birthDate: z.string().optional(),
+  paternalLastName: z.string().min(2),
+  maternalLastName: z.string().optional(),
   gender: z.string().optional(),
   number: z.number().int().min(1).max(99),
   position: z.string().min(1, "La posición es requerida"),
+  photoUrl: z.string().optional(),
 });
 
 // GET /api/delegado/team/[teamId]/roster
@@ -38,7 +39,7 @@ export async function GET(
       where: { teamId },
       include: {
         player: {
-          select: { id: true, dni: true, firstName: true, lastName: true, birthDate: true, gender: true },
+          select: { id: true, dni: true, firstName: true, paternalLastName: true, maternalLastName: true, birthDate: true, gender: true },
         },
       },
       orderBy: { number: "asc" },
@@ -102,8 +103,8 @@ export async function POST(
         data: {
           dni: data.dni,
           firstName: data.firstName,
-          lastName: data.lastName,
-          birthDate: data.birthDate ? new Date(data.birthDate) : null,
+          paternalLastName: data.paternalLastName,
+          maternalLastName: data.maternalLastName || null,
           gender: data.gender,
         },
       });
@@ -124,10 +125,11 @@ export async function POST(
         number: data.number,
         position: data.position,
         status: "inscrito",
+        photoUrl: data.photoUrl || null,
       },
       include: {
         player: {
-          select: { id: true, dni: true, firstName: true, lastName: true, birthDate: true, gender: true },
+          select: { id: true, dni: true, firstName: true, paternalLastName: true, maternalLastName: true, birthDate: true, gender: true },
         },
       },
     });

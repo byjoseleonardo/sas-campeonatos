@@ -19,8 +19,6 @@ const createSchema = z.object({
   maxInscripciones: z.number().int().min(1).default(22),
   maxEquipos: z.number().int().min(0).default(0),
   minSuplentes: z.number().int().min(0).default(5),
-  // IDs de usuarios a asignar como organizador y técnicos
-  organizadorId: z.string().optional(),
   tecnicoIds: z.array(z.string()).optional(),
 });
 
@@ -39,32 +37,40 @@ function slugify(text: string) {
     .replace(/\s+/g, "-");
 }
 
-// GET /api/championships?search=...&mine=true
+// GET /api/championships?search=...
+// - Admin: ve campeonatos donde adminId = session.user.id
+// - Organizador: ve sus propios campeonatos (por userRole)
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
-    const mine = searchParams.get("mine") === "true";
+    const userId = session.user.id;
+    const role = session.user.role as Role;
 
-    // Si mine=true y es organizador: filtrar solo sus campeonatos
-    const userId = session?.user?.id;
-    const role = session?.user?.role;
-    const filterByOrg = mine && userId && role === "organizador";
+    let scopeFilter: Record<string, unknown> = {};
+    if (role === Role.administrador) {
+      scopeFilter = { adminId: userId };
+    } else if (role === Role.organizador) {
+      scopeFilter = { userRoles: { some: { userId, role: Role.organizador } } };
+    }
+    // Superadmin ve todo
 
     const where = {
       ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}),
-      ...(filterByOrg ? {
-        userRoles: { some: { userId, role: Role.organizador } },
-      } : {}),
+      ...scopeFilter,
     };
 
     const championships = await prisma.championship.findMany({
       where,
       include: {
-        createdBy: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, paternalLastName: true } },
         userRoles: {
-          include: { user: { select: { id: true, name: true, email: true } } },
+          include: { user: { select: { id: true, firstName: true, paternalLastName: true, email: true } } },
         },
         _count: { select: { teams: true } },
       },
@@ -85,9 +91,15 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
-    if (session.user.role !== "administrador") {
-      return NextResponse.json({ error: "Solo el administrador puede crear campeonatos" }, { status: 403 });
+    if (session.user.role !== "organizador") {
+      return NextResponse.json({ error: "Solo el organizador puede crear campeonatos" }, { status: 403 });
     }
+
+    // Obtener el adminId del organizador para heredarlo al campeonato
+    const orgUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { adminId: true },
+    });
 
     const body = await req.json();
     const data = createSchema.parse(body);
@@ -116,25 +128,25 @@ export async function POST(req: NextRequest) {
         maxEquipos: data.maxEquipos,
         minSuplentes: data.minSuplentes,
         createdById: session.user.id,
+        adminId: orgUser?.adminId ?? null,
       },
       include: {
-        createdBy: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, firstName: true, paternalLastName: true } },
         _count: { select: { teams: true } },
       },
     });
 
-    // Asignar organizador al campeonato (actualizar su UserRole)
-    if (data.organizadorId) {
-      await prisma.userRole.updateMany({
-        where: { userId: data.organizadorId, role: Role.organizador },
-        data: { championshipId: championship.id },
-      });
-    }
+    // Auto-asignar el organizador (quien crea) al campeonato
+    await prisma.userRole.upsert({
+      where: { userId_role_championshipId: { userId: session.user.id, role: Role.organizador, championshipId: championship.id } },
+      update: {},
+      create: { userId: session.user.id, role: Role.organizador, championshipId: championship.id },
+    });
 
-    // Asignar técnicos al campeonato
+    // Asignar técnicos de mesa al campeonato
     if (data.tecnicoIds?.length) {
       await prisma.userRole.updateMany({
-        where: { userId: { in: data.tecnicoIds }, role: Role.tecnico },
+        where: { userId: { in: data.tecnicoIds }, role: Role.tecnico_mesa },
         data: { championshipId: championship.id },
       });
     }
@@ -149,7 +161,8 @@ export async function POST(req: NextRequest) {
         const delegadoUser = await prisma.user.create({
           data: {
             email,
-            name: `Delegado ${i} — ${data.name}`,
+            firstName: `Delegado ${i}`,
+            paternalLastName: data.name,
             password: hashedPassword,
             mustChangePassword: true,
             tempPassword,

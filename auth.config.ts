@@ -20,11 +20,19 @@ export const authConfig = {
         return Response.redirect(new URL("/delegado/cambiar-password", nextUrl));
       }
 
-      // Técnico va a su portal, no al admin
-      if (pathname.startsWith("/admin") && role === Role.tecnico) {
+      // Superadmin va a su propio portal
+      if (pathname.startsWith("/admin") && role === Role.superadministrador) {
+        return Response.redirect(new URL("/superadmin", nextUrl));
+      }
+      if (pathname.startsWith("/superadmin") && role !== Role.superadministrador) {
+        return Response.redirect(new URL("/admin", nextUrl));
+      }
+
+      // Técnico de mesa va a su portal, no al admin
+      if (pathname.startsWith("/admin") && role === Role.tecnico_mesa) {
         return Response.redirect(new URL("/tecnico/partidos", nextUrl));
       }
-      if (pathname.startsWith("/tecnico") && role !== Role.tecnico) {
+      if (pathname.startsWith("/tecnico") && role !== Role.tecnico_mesa) {
         return Response.redirect(new URL("/admin", nextUrl));
       }
 

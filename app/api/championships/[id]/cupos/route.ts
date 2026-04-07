@@ -31,7 +31,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            paternalLastName: true,
+            maternalLastName: true,
             email: true,
             tempPassword: true,
             isActive: true,

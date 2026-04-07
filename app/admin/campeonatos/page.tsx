@@ -35,7 +35,9 @@ import { useSession } from "next-auth/react";
 
 interface UserOption {
   id: string;
-  name: string;
+  firstName: string;
+  paternalLastName: string;
+  maternalLastName?: string | null;
   email: string;
 }
 
@@ -53,8 +55,8 @@ interface Championship {
   suplentes: number;
   minSuplentes: number;
   maxEquipos: number;
-  createdBy: { id: string; name: string };
-  userRoles: { role: string; user: { id: string; name: string; email: string } }[];
+  createdBy: { id: string; firstName: string; paternalLastName: string };
+  userRoles: { role: string; user: { id: string; firstName: string; paternalLastName: string; email: string } }[];
   _count: { teams: number };
 }
 
@@ -70,7 +72,6 @@ export type FormState = {
   titulares: number;
   suplentes: number;
   minSuplentes: number;
-  organizadorId: string;
   tecnicoIds: string[];
 };
 
@@ -124,7 +125,6 @@ export const emptyForm: FormState = {
   titulares: 11,
   suplentes: 7,
   minSuplentes: 5,
-  organizadorId: "",
   tecnicoIds: [],
 };
 
@@ -133,11 +133,10 @@ export const emptyForm: FormState = {
 interface ChampionshipFormProps {
   form: FormState;
   setForm: (f: FormState) => void;
-  organizadores: UserOption[];
   tecnicos: UserOption[];
 }
 
-function ChampionshipForm({ form, setForm, organizadores, tecnicos }: ChampionshipFormProps) {
+function ChampionshipForm({ form, setForm, tecnicos }: ChampionshipFormProps) {
   const toggleTecnico = (id: string) => {
     setForm({
       ...form,
@@ -280,36 +279,15 @@ function ChampionshipForm({ form, setForm, organizadores, tecnicos }: Championsh
         </div>
       </div>
 
-      {/* Asignación de usuarios */}
+      {/* Asignación de personal */}
       <div className="rounded-lg border border-border/60 p-3 space-y-3">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
           <Users className="h-3.5 w-3.5" /> Asignación de personal
         </p>
 
-        <div className="space-y-2">
-          <Label>Organizador</Label>
-          <Select
-            value={form.organizadorId}
-            onValueChange={(v) => setForm({ ...form, organizadorId: v === "none" ? "" : v })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Sin organizador asignado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Sin asignar</SelectItem>
-              {organizadores.map((u) => (
-                <SelectItem key={u.id} value={u.id}>
-                  {u.name}
-                  <span className="text-muted-foreground text-xs ml-1">({u.email})</span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
         {tecnicos.length > 0 && (
           <div className="space-y-2">
-            <Label>Técnicos</Label>
+            <Label>Técnicos de Mesa</Label>
             <div className="space-y-1.5 max-h-32 overflow-y-auto rounded border border-border/50 p-2">
               {tecnicos.map((u) => (
                 <label
@@ -320,7 +298,7 @@ function ChampionshipForm({ form, setForm, organizadores, tecnicos }: Championsh
                     checked={form.tecnicoIds.includes(u.id)}
                     onCheckedChange={() => toggleTecnico(u.id)}
                   />
-                  <span className="text-sm">{u.name}</span>
+                  <span className="text-sm">{[u.firstName, u.paternalLastName, u.maternalLastName].filter(Boolean).join(" ")}</span>
                   <span className="text-xs text-muted-foreground">{u.email}</span>
                 </label>
               ))}
@@ -344,19 +322,17 @@ export default function AdminChampionshipsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [organizadores, setOrganizadores] = useState<UserOption[]>([]);
   const [tecnicos, setTecnicos] = useState<UserOption[]>([]);
   const { toast } = useToast();
   const { data: session, status: sessionStatus } = useSession();
-  const isAdmin = session?.user?.role === "administrador";
+  const isOrganizador = session?.user?.role === "organizador";
 
   const fetchChampionships = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (search) params.set("search", search);
-      if (!isAdmin) params.set("mine", "true");
-      const res = await fetch(`/api/championships?${params}`);
+      const res = await fetch(`/api/championships?${params}`, { credentials: "include" });
       const data = await res.json();
       setChampionships(Array.isArray(data) ? data : []);
     } catch {
@@ -364,17 +340,14 @@ export default function AdminChampionshipsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, toast, isAdmin]);
+  }, [search, toast, isOrganizador]);
 
   useEffect(() => {
     if (sessionStatus !== "loading") fetchChampionships();
   }, [fetchChampionships, sessionStatus]);
 
   useEffect(() => {
-    fetch("/api/users?role=organizador")
-      .then((r) => r.json())
-      .then((d) => setOrganizadores(Array.isArray(d) ? d : []));
-    fetch("/api/users?role=tecnico")
+    fetch("/api/users?role=tecnico_mesa")
       .then((r) => r.json())
       .then((d) => setTecnicos(Array.isArray(d) ? d : []));
   }, []);
@@ -395,7 +368,6 @@ export default function AdminChampionshipsPage() {
           titulares: Number(form.titulares),
           suplentes: Number(form.suplentes),
           maxInscripciones: Number(form.titulares) + Number(form.suplentes),
-          organizadorId: form.organizadorId || undefined,
           tecnicoIds: form.tecnicoIds.length ? form.tecnicoIds : undefined,
         }),
       });
@@ -414,8 +386,7 @@ export default function AdminChampionshipsPage() {
 
   const openEdit = (c: Championship) => {
     setEditChamp(c);
-    const orgRole = c.userRoles.find((r) => r.role === "organizador");
-    const tecRoles = c.userRoles.filter((r) => r.role === "tecnico");
+    const tecRoles = c.userRoles.filter((r) => r.role === "tecnico_mesa");
     setForm({
       name: c.name,
       sport: c.sport,
@@ -428,7 +399,6 @@ export default function AdminChampionshipsPage() {
       suplentes: c.suplentes,
       minSuplentes: c.minSuplentes ?? 5,
       maxEquipos: c.maxEquipos ?? 0,
-      organizadorId: orgRole?.user.id ?? "",
       tecnicoIds: tecRoles.map((r) => r.user.id),
     });
     setEditOpen(true);
@@ -447,7 +417,6 @@ export default function AdminChampionshipsPage() {
           titulares: Number(form.titulares),
           suplentes: Number(form.suplentes),
           maxInscripciones: Number(form.titulares) + Number(form.suplentes),
-          organizadorId: form.organizadorId || null,
           tecnicoIds: form.tecnicoIds,
         }),
       });
@@ -499,17 +468,17 @@ export default function AdminChampionshipsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-4xl text-foreground">
-            {isAdmin ? "CAMPEONATOS" : "MIS CAMPEONATOS"}
+            {isOrganizador ? "MIS CAMPEONATOS" : "CAMPEONATOS"}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {isAdmin
-              ? "Crea y gestiona los campeonatos del sistema"
-              : "Campeonatos asignados a ti como organizador"}
+            {isOrganizador
+              ? "Crea y gestiona tus campeonatos"
+              : "Campeonatos de tus organizadores"}
           </p>
         </div>
 
-        {/* CREATE DIALOG — solo admin */}
-        {isAdmin && (
+        {/* CREATE DIALOG — solo organizador */}
+        {isOrganizador && (
         <Dialog open={createOpen} onOpenChange={(v) => { setCreateOpen(v); if (!v) setForm(emptyForm); }}>
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-1" /> Nuevo Campeonato</Button>
@@ -522,7 +491,6 @@ export default function AdminChampionshipsPage() {
             <ChampionshipForm
               form={form}
               setForm={setForm}
-              organizadores={organizadores}
               tecnicos={tecnicos}
             />
             <DialogFooter>
@@ -548,7 +516,6 @@ export default function AdminChampionshipsPage() {
           <ChampionshipForm
             form={form}
             setForm={setForm}
-            organizadores={organizadores}
             tecnicos={tecnicos}
           />
           <DialogFooter>
@@ -618,7 +585,7 @@ export default function AdminChampionshipsPage() {
               <TableBody>
                 {championships.map((c) => {
                   const org = c.userRoles.find((r) => r.role === "organizador");
-                  const tecCount = c.userRoles.filter((r) => r.role === "tecnico").length;
+                  const tecCount = c.userRoles.filter((r) => r.role === "tecnico_mesa").length;
                   return (
                     <TableRow key={c.id}>
                       <TableCell>
@@ -641,12 +608,12 @@ export default function AdminChampionshipsPage() {
                       <TableCell>
                         <div className="text-xs space-y-0.5">
                           {org ? (
-                            <p className="text-foreground">{org.user.name}</p>
+                            <p className="text-foreground">{[org.user.firstName, org.user.paternalLastName].filter(Boolean).join(" ")}</p>
                           ) : (
                             <p className="text-muted-foreground">Sin org.</p>
                           )}
                           {tecCount > 0 && (
-                            <p className="text-muted-foreground">{tecCount} técnico{tecCount > 1 ? "s" : ""}</p>
+                            <p className="text-muted-foreground">{tecCount} téc. mesa{tecCount > 1 ? "" : ""}</p>
                           )}
                         </div>
                       </TableCell>
@@ -668,8 +635,8 @@ export default function AdminChampionshipsPage() {
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
 
-                            {/* Cambiar estado */}
-                            {statusTransitions[c.status].length > 0 && (
+                            {/* Cambiar estado — solo organizador */}
+                            {isOrganizador && statusTransitions[c.status].length > 0 && (
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger>Cambiar estado</DropdownMenuSubTrigger>
                                 <DropdownMenuSubContent>
@@ -683,7 +650,7 @@ export default function AdminChampionshipsPage() {
                               </DropdownMenuSub>
                             )}
 
-                            <DropdownMenuSeparator />
+                            {isOrganizador && <DropdownMenuSeparator />}
 
                             {/* Navegación */}
                             {c.format === "personalizado" && (
@@ -706,8 +673,8 @@ export default function AdminChampionshipsPage() {
                               </Link>
                             </DropdownMenuItem>
 
-                            {/* Solo admin */}
-                            {isAdmin && (
+                            {/* Solo organizador */}
+                            {isOrganizador && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => openEdit(c)} className="flex items-center gap-2">

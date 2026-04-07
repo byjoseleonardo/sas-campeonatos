@@ -11,7 +11,7 @@ async function canAccessMatch(userId: string, matchId: string) {
   });
   if (!match) return null;
   const role = await prisma.userRole.findFirst({
-    where: { userId, role: Role.tecnico, championshipId: match.championshipId },
+    where: { userId, role: Role.tecnico_mesa, championshipId: match.championshipId },
   });
   return role ? match : null;
 }
@@ -39,7 +39,7 @@ export async function GET(
         phase:        { select: { id: true, name: true } },
         events: {
           include: {
-            player: { select: { id: true, firstName: true, lastName: true } },
+            player: { select: { id: true, firstName: true, paternalLastName: true, maternalLastName: true } },
             team:   { select: { id: true, name: true } },
           },
           orderBy: { minute: "asc" },
@@ -56,7 +56,7 @@ export async function GET(
         status: "inscrito",
       },
       include: {
-        player: { select: { id: true, firstName: true, lastName: true, dni: true } },
+        player: { select: { id: true, firstName: true, paternalLastName: true, maternalLastName: true, dni: true } },
       },
       orderBy: { number: "asc" },
     });

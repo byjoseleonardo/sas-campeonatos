@@ -13,30 +13,51 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Contraseña", type: "password" },
       },
       authorize: async (credentials) => {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.email || !credentials?.password) {
+          console.log("[auth] Faltan credenciales");
+          return null;
+        }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-          include: { userRoles: true },
-        });
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email as string },
+            include: { userRoles: true },
+          });
 
-        if (!user || !user.isActive) return null;
+          if (!user) {
+            console.log("[auth] Usuario no encontrado:", credentials.email);
+            return null;
+          }
+          if (!user.isActive) {
+            console.log("[auth] Usuario inactivo:", credentials.email);
+            return null;
+          }
 
-        const valid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
-        if (!valid) return null;
+          const valid = await bcrypt.compare(
+            credentials.password as string,
+            user.password
+          );
+          if (!valid) {
+            console.log("[auth] Contraseña incorrecta para:", credentials.email);
+            return null;
+          }
 
-        const primaryRole = user.userRoles[0]?.role ?? "administrador";
+          const primaryRole = user.userRoles[0]?.role ?? "administrador";
+          console.log("[auth] Login exitoso:", credentials.email, "| rol:", primaryRole);
 
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: primaryRole,
-          mustChangePassword: user.mustChangePassword,
-        };
+          const fullName = [user.firstName, user.paternalLastName, user.maternalLastName].filter(Boolean).join(" ");
+
+          return {
+            id: user.id,
+            name: fullName,
+            email: user.email,
+            role: primaryRole,
+            mustChangePassword: user.mustChangePassword,
+          };
+        } catch (err) {
+          console.error("[auth] Error en authorize:", err);
+          return null;
+        }
       },
     }),
   ],
