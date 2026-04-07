@@ -10,7 +10,7 @@ async function canAccessMatch(userId: string, matchId: string) {
   });
   if (!match) return null;
   const role = await prisma.userRole.findFirst({
-    where: { userId, role: Role.tecnico, championshipId: match.championshipId },
+    where: { userId, role: Role.tecnico_mesa, championshipId: match.championshipId },
   });
   return role ? match : null;
 }

@@ -5,10 +5,12 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 
 const schema = z.object({
-  name:        z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  email:       z.string().email("Correo electrónico inválido"),
-  phone:       z.string().optional(),
-  newPassword: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  firstName:       z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  paternalLastName: z.string().min(2, "El apellido paterno debe tener al menos 2 caracteres"),
+  maternalLastName: z.string().optional(),
+  email:           z.string().email("Correo electrónico inválido"),
+  phone:           z.string().optional(),
+  newPassword:     z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
 });
 
 // PATCH /api/delegado/change-password
@@ -20,7 +22,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, email, phone, newPassword } = schema.parse(body);
+    const { firstName, paternalLastName, maternalLastName, email, phone, newPassword } = schema.parse(body);
 
     // Verificar que el email no esté en uso por otro usuario
     const existing = await prisma.user.findFirst({
@@ -35,7 +37,9 @@ export async function PATCH(req: NextRequest) {
     await prisma.user.update({
       where: { id: session.user.id },
       data: {
-        name,
+        firstName,
+        paternalLastName,
+        maternalLastName: maternalLastName || null,
         email,
         phone: phone || null,
         password: hashed,

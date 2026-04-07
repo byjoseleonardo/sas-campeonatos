@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  LayoutDashboard, Trophy, Users, UserCheck,
-  Shield, Eye, ClipboardList, ChevronLeft, PanelLeft, LogOut,
-} from "lucide-react";
+import { LayoutDashboard, Building2, ChevronLeft, PanelLeft, LogOut, Trophy } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -11,38 +8,19 @@ import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-type Role = "superadministrador" | "administrador" | "organizador" | "supervisor" | "tecnico_mesa" | "delegado";
-
 const menuItems = [
-  { title: "Dashboard",        url: "/admin",               icon: LayoutDashboard, roles: ["administrador", "organizador"] },
-  { title: "Campeonatos",      url: "/admin/campeonatos",   icon: Trophy,          roles: ["administrador", "organizador"] },
-  { title: "Organizadores",    url: "/admin/roles",         icon: Shield,          roles: ["administrador"] },
-  { title: "Delegados",        url: "/admin/delegados",     icon: UserCheck,       roles: ["organizador"] },
-  { title: "Técnicos de Mesa", url: "/admin/tecnicos",      icon: Users,           roles: ["organizador"] },
-  { title: "Supervisores",     url: "/admin/supervisores",  icon: Eye,             roles: ["organizador"] },
-  { title: "Inscripción",      url: "/admin/inscripcion",   icon: ClipboardList,   roles: ["organizador"] },
+  { title: "Dashboard",      url: "/superadmin",        icon: LayoutDashboard },
+  { title: "Administradores", url: "/superadmin/admins", icon: Building2 },
 ];
 
-const roleLabel: Record<string, string> = {
-  administrador: "Admin",
-  organizador:   "Organizador",
-  supervisor:    "Supervisor",
-  tecnico_mesa:  "Técnico de Mesa",
-};
-
-export function AdminSidebar() {
+export function SuperAdminSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
-  const role = (session?.user?.role ?? "") as Role;
-
-  const visibleItems = menuItems.filter((item) =>
-    item.roles.includes(role)
-  );
 
   const isActive = (path: string) =>
-    path === "/admin" ? pathname === "/admin" : pathname.startsWith(path);
+    path === "/superadmin" ? pathname === "/superadmin" : pathname.startsWith(path);
 
   return (
     <aside
@@ -59,12 +37,12 @@ export function AdminSidebar() {
           </Button>
         ) : (
           <div className="flex items-center justify-between w-full">
-            <Link href="/admin" className="flex items-center gap-2">
+            <Link href="/superadmin" className="flex items-center gap-2">
               <Trophy className="h-6 w-6 shrink-0 text-primary" />
               <span className="font-display text-xl tracking-wide text-foreground">
                 CHAMP<span className="text-primary">ZONE</span>
                 <span className="ml-1.5 text-xs font-body font-medium text-muted-foreground">
-                  {roleLabel[role] ?? "Admin"}
+                  Super
                 </span>
               </span>
             </Link>
@@ -78,10 +56,10 @@ export function AdminSidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-auto py-4 px-2">
         <p className={cn("mb-2 px-2 text-xs font-medium text-muted-foreground", collapsed && "sr-only")}>
-          Gestión
+          Plataforma
         </p>
         <ul className="flex flex-col gap-1">
-          {visibleItems.map((item) => (
+          {menuItems.map((item) => (
             <li key={item.title}>
               <Link
                 href={item.url}
@@ -100,7 +78,7 @@ export function AdminSidebar() {
         </ul>
       </nav>
 
-      {/* Footer: user info + logout */}
+      {/* Footer */}
       <div className="border-t p-3 space-y-1">
         {!collapsed && session?.user && (
           <div className="px-2 py-1">

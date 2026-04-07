@@ -49,7 +49,8 @@ interface RosterEntry {
     id: string;
     dni: string;
     firstName: string;
-    lastName: string;
+    paternalLastName: string;
+    maternalLastName?: string | null;
   };
 }
 
@@ -148,8 +149,9 @@ export default function DelegadoInscripcionPage() {
 
   // Inscribir jugador
   const handleInscribir = async (player: {
-    firstName: string; lastName: string; dni: string; number: number; position: string;
-    photoUrl: string | null; birthDate?: string | null; gender?: string | null;
+    firstName: string; paternalLastName: string; maternalLastName?: string | null;
+    dni: string; number: number; position: string;
+    photoUrl: string | null; gender?: string | null;
   }) => {
     if (!team?.id) return;
     try {
@@ -159,16 +161,17 @@ export default function DelegadoInscripcionPage() {
         body: JSON.stringify({
           dni: player.dni,
           firstName: player.firstName,
-          lastName: player.lastName,
+          paternalLastName: player.paternalLastName,
+          maternalLastName: player.maternalLastName ?? undefined,
           number: player.number,
           position: player.position,
-          birthDate: player.birthDate ?? undefined,
+          photoUrl: player.photoUrl ?? undefined,
           gender: player.gender ?? undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast({ title: "Jugador inscrito", description: `${player.firstName} ${player.lastName} fue registrado exitosamente.` });
+      toast({ title: "Jugador inscrito", description: `${player.firstName} ${player.paternalLastName} fue registrado exitosamente.` });
       fetchRoster();
     } catch (e: unknown) {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Error al inscribir", variant: "destructive" });
@@ -206,7 +209,7 @@ export default function DelegadoInscripcionPage() {
   const planillaCompleta = titularesCompletos && suplentesCompletos;
 
   const filteredRoster = roster.filter((r) =>
-    `${r.player.firstName} ${r.player.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
+    `${r.player.firstName} ${r.player.paternalLastName} ${r.player.maternalLastName ?? ""}`.toLowerCase().includes(search.toLowerCase()) ||
     r.player.dni.includes(search)
   );
 
@@ -297,7 +300,7 @@ export default function DelegadoInscripcionPage() {
                   {titularesCompletos && !suplentesCompletos && (
                     <>Faltan <strong>{minSuplentes - suplentesActuales}</strong> suplente{minSuplentes - suplentesActuales !== 1 ? "s" : ""} mínimos · </>
                   )}
-                  Mínimo requerido: <strong>{titulares}</strong> titulares + <strong>{minSuplentes}</strong> suplentes
+                  Mínimo: <strong>{titulares}</strong> titulares + <strong>{minSuplentes}</strong> suplentes · Total permitido: <strong>{maxJugadores}</strong> jugadores
                 </span>
               )}
             </div>
@@ -396,7 +399,7 @@ export default function DelegadoInscripcionPage() {
                                 {entry.player.firstName.charAt(0)}
                               </div>
                               <p className="text-sm font-medium">
-                                {entry.player.firstName} {entry.player.lastName}
+                                {[entry.player.firstName, entry.player.paternalLastName, entry.player.maternalLastName].filter(Boolean).join(" ")}
                               </p>
                             </div>
                           </TableCell>

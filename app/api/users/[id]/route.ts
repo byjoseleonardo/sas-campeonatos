@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { Role } from "@/lib/generated/prisma/enums";
 
 const updateUserSchema = z.object({
-  name: z.string().min(2).optional(),
+  firstName: z.string().min(2).optional(),
+  paternalLastName: z.string().min(2).optional(),
+  maternalLastName: z.string().optional(),
   email: z.string().email().optional(),
   password: z.string().min(6).optional(),
   phone: z.string().optional(),
@@ -47,6 +50,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 // PATCH /api/users/[id]
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await req.json();
     const data = updateUserSchema.parse(body);
@@ -111,6 +119,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 // DELETE /api/users/[id]
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+    }
+
     const { id } = await params;
 
     const existing = await prisma.user.findUnique({ where: { id } });

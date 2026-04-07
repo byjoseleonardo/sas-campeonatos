@@ -29,10 +29,18 @@ export async function GET(
   const teams = await prisma.team.findMany({
     where: { championshipId: id },
     include: {
+      delegate: {
+        select: { id: true, firstName: true, paternalLastName: true, maternalLastName: true, email: true },
+      },
       rosterEntries: {
-        include: {
+        select: {
+          id: true,
+          number: true,
+          position: true,
+          status: true,
+          photoUrl: true,
           player: {
-            select: { id: true, dni: true, firstName: true, lastName: true, birthDate: true, gender: true },
+            select: { id: true, dni: true, firstName: true, paternalLastName: true, maternalLastName: true, gender: true },
           },
         },
         orderBy: { number: "asc" },

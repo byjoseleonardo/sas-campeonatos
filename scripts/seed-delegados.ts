@@ -109,7 +109,8 @@ async function main() {
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        name: datos.delegadoName,
+        firstName: datos.delegadoName,
+        paternalLastName: "Delegado",
         email: emailReal,
         password: hashedPassword,
         mustChangePassword: false,
@@ -183,7 +184,7 @@ async function main() {
         create: {
           dni,
           firstName: randomItem(NOMBRES),
-          lastName: randomItem(APELLIDOS),
+          paternalLastName: randomItem(APELLIDOS),
           birthDate: randomBirthDate(),
           gender: "M",
         },

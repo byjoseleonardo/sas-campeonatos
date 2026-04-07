@@ -56,13 +56,14 @@ export default function AdminDelegadoInscripcionPage() {
 
   const handleInscribir = (player: {
     firstName: string;
-    lastName: string;
+    paternalLastName: string;
+    maternalLastName?: string | null;
     dni: string;
     number: number;
     position: string;
     photoUrl: string | null;
   }) => {
-    const fullName = `${player.firstName} ${player.lastName}`;
+    const fullName = [player.firstName, player.paternalLastName, player.maternalLastName].filter(Boolean).join(" ");
     const newPlayer: Player = {
       id: `p${Date.now()}`,
       name: fullName,

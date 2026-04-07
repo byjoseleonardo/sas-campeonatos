@@ -20,9 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Plus, Search, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { championships } from "@/lib/mockData";
 
-type Role = "administrador" | "organizador" | "supervisor" | "tecnico" | "delegado";
+type Role = "administrador" | "organizador" | "supervisor" | "tecnico_mesa" | "delegado";
 
 interface UserRole {
   id: string;
@@ -33,18 +32,24 @@ interface UserRole {
 
 interface User {
   id: string;
-  name: string;
+  firstName: string;
+  paternalLastName: string;
+  maternalLastName?: string | null;
   email: string;
   isActive: boolean;
   createdAt: string;
   userRoles: UserRole[];
 }
 
+function userFullName(u: User) {
+  return [u.firstName, u.paternalLastName, u.maternalLastName].filter(Boolean).join(" ");
+}
+
 const roleLabels: Record<Role, string> = {
   administrador: "Administrador",
   organizador: "Organizador",
   supervisor: "Supervisor",
-  tecnico: "Técnico",
+  tecnico_mesa: "Técnico de Mesa",
   delegado: "Delegado",
 };
 
@@ -52,18 +57,16 @@ const roleBadgeVariants: Record<Role, string> = {
   administrador: "bg-purple-500/15 text-purple-600 border-purple-500/30",
   organizador: "bg-primary/15 text-primary border-primary/30",
   supervisor: "bg-blue-500/15 text-blue-600 border-blue-500/30",
-  tecnico: "bg-accent/15 text-accent-foreground border-accent/30",
+  tecnico_mesa: "bg-accent/15 text-accent-foreground border-accent/30",
   delegado: "bg-secondary/80 text-secondary-foreground border-secondary",
 };
 
-// El administrador solo puede crear organizadores y tecnicos
-const CREATABLE_ROLES: Role[] = ["organizador", "tecnico"];
-// Todos los roles para filtros de visualizacion
-const ALL_ROLES: Role[] = ["administrador", "organizador", "supervisor", "tecnico", "delegado"];
-// Roles con scope de campeonato
-const SCOPED_ROLES: Role[] = ["organizador", "tecnico"];
+// El administrador solo puede crear organizadores
+const CREATABLE_ROLES: Role[] = ["organizador"];
+// Roles visibles para admin
+const ALL_ROLES: Role[] = ["organizador"];
 
-const emptyForm = { name: "", email: "", password: "", role: "" as Role | "", championshipId: "" };
+const emptyForm = { firstName: "", paternalLastName: "", maternalLastName: "", email: "", password: "", role: "" as Role | "", championshipId: "" };
 
 export default function AdminRolesPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -97,7 +100,7 @@ export default function AdminRolesPage() {
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   const handleCreate = async () => {
-    if (!form.name || !form.email || !form.password || !form.role) {
+    if (!form.firstName || !form.paternalLastName || !form.email || !form.password || !form.role) {
       toast({ title: "Campos incompletos", description: "Completa todos los campos requeridos.", variant: "destructive" });
       return;
     }
@@ -107,7 +110,9 @@ export default function AdminRolesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: form.name,
+          firstName: form.firstName,
+          paternalLastName: form.paternalLastName,
+          maternalLastName: form.maternalLastName || undefined,
           email: form.email,
           password: form.password,
           role: form.role,
@@ -116,7 +121,7 @@ export default function AdminRolesPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast({ title: "Usuario creado", description: `${form.name} fue registrado exitosamente.` });
+      toast({ title: "Usuario creado", description: `${form.firstName} ${form.paternalLastName} fue registrado exitosamente.` });
       setCreateOpen(false);
       setForm(emptyForm);
       fetchUsers();
@@ -132,7 +137,9 @@ export default function AdminRolesPage() {
     setSaving(true);
     try {
       const body: Record<string, unknown> = {};
-      if (form.name) body.name = form.name;
+      if (form.firstName) body.firstName = form.firstName;
+      if (form.paternalLastName) body.paternalLastName = form.paternalLastName;
+      body.maternalLastName = form.maternalLastName || null;
       if (form.email) body.email = form.email;
       if (form.password) body.password = form.password;
       if (form.role) body.role = form.role;
@@ -175,7 +182,9 @@ export default function AdminRolesPage() {
     setEditUser(user);
     const firstRole = user.userRoles[0];
     setForm({
-      name: user.name,
+      firstName: user.firstName,
+      paternalLastName: user.paternalLastName,
+      maternalLastName: user.maternalLastName ?? "",
       email: user.email,
       password: "",
       role: firstRole?.role || "",
@@ -188,8 +197,8 @@ export default function AdminRolesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-4xl text-foreground">ROLES Y USUARIOS</h1>
-          <p className="text-muted-foreground text-sm mt-1">Crea y gestiona los usuarios del sistema</p>
+          <h1 className="font-display text-4xl text-foreground">ORGANIZADORES</h1>
+          <p className="text-muted-foreground text-sm mt-1">Crea y gestiona los organizadores de tu cuenta</p>
         </div>
 
         {/* CREATE DIALOG */}
@@ -203,9 +212,19 @@ export default function AdminRolesPage() {
               <DialogDescription>Registra un organizador o técnico en el sistema.</DialogDescription>
             </DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); handleCreate(); }} className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Nombre</Label>
+                  <Input placeholder="Ej: Juan" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Apellido paterno</Label>
+                  <Input placeholder="Ej: Pérez" value={form.paternalLastName} onChange={(e) => setForm({ ...form, paternalLastName: e.target.value })} />
+                </div>
+              </div>
               <div className="space-y-2">
-                <Label>Nombre completo</Label>
-                <Input placeholder="Ej: Juan Pérez" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                <Label>Apellido materno <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                <Input placeholder="Ej: García" value={form.maternalLastName} onChange={(e) => setForm({ ...form, maternalLastName: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label>Correo electrónico</Label>
@@ -226,19 +245,6 @@ export default function AdminRolesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              {SCOPED_ROLES.includes(form.role as Role) && (
-                <div className="space-y-2">
-                  <Label>Campeonato <span className="text-muted-foreground text-xs">(opcional)</span></Label>
-                  <Select value={form.championshipId} onValueChange={(v) => setForm({ ...form, championshipId: v })}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar campeonato" /></SelectTrigger>
-                    <SelectContent>
-                      {championships.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
             <DialogFooter>
               <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
               <Button type="submit" disabled={saving}>
@@ -258,9 +264,19 @@ export default function AdminRolesPage() {
             <DialogDescription>Modifica los datos del usuario seleccionado.</DialogDescription>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); handleEdit(); }} className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Nombre</Label>
+                <Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Apellido paterno</Label>
+                <Input value={form.paternalLastName} onChange={(e) => setForm({ ...form, paternalLastName: e.target.value })} />
+              </div>
+            </div>
             <div className="space-y-2">
-              <Label>Nombre completo</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Label>Apellido materno <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+              <Input value={form.maternalLastName} onChange={(e) => setForm({ ...form, maternalLastName: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label>Correo electrónico</Label>
@@ -281,19 +297,6 @@ export default function AdminRolesPage() {
                 </SelectContent>
               </Select>
             </div>
-            {SCOPED_ROLES.includes(form.role as Role) && (
-              <div className="space-y-2">
-                <Label>Campeonato</Label>
-                <Select value={form.championshipId} onValueChange={(v) => setForm({ ...form, championshipId: v })}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar campeonato" /></SelectTrigger>
-                  <SelectContent>
-                    {championships.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => { setEditOpen(false); setEditUser(null); setForm(emptyForm); }}>Cancelar</Button>
             <Button type="submit" disabled={saving}>
@@ -376,10 +379,10 @@ export default function AdminRolesPage() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted font-display text-sm">
-                            {u.name.charAt(0)}
+                            {u.firstName.charAt(0)}
                           </div>
                           <div>
-                            <p className="text-sm font-medium">{u.name}</p>
+                            <p className="text-sm font-medium">{userFullName(u)}</p>
                             <p className="text-xs text-muted-foreground">{u.email}</p>
                           </div>
                         </div>

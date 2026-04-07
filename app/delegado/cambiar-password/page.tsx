@@ -12,20 +12,26 @@ import { useToast } from "@/hooks/use-toast";
 export default function CambiarPasswordPage() {
   const { toast } = useToast();
 
-  const [name, setName]           = useState("");
-  const [email, setEmail]         = useState("");
-  const [phone, setPhone]         = useState("");
-  const [newPassword, setNew]     = useState("");
-  const [confirm, setConfirm]     = useState("");
-  const [showNew, setShowNew]     = useState(false);
-  const [showConf, setShowConf]   = useState(false);
-  const [saving, setSaving]       = useState(false);
+  const [firstName, setFirstName]               = useState("");
+  const [paternalLastName, setPaternalLastName] = useState("");
+  const [maternalLastName, setMaternalLastName] = useState("");
+  const [email, setEmail]                       = useState("");
+  const [phone, setPhone]                       = useState("");
+  const [newPassword, setNew]                   = useState("");
+  const [confirm, setConfirm]                   = useState("");
+  const [showNew, setShowNew]                   = useState(false);
+  const [showConf, setShowConf]                 = useState(false);
+  const [saving, setSaving]                     = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) {
-      toast({ title: "Nombre requerido", description: "Ingresa tu nombre completo.", variant: "destructive" });
+    if (!firstName.trim()) {
+      toast({ title: "Nombre requerido", description: "Ingresa tu nombre.", variant: "destructive" });
+      return;
+    }
+    if (!paternalLastName.trim()) {
+      toast({ title: "Apellido paterno requerido", description: "Ingresa tu apellido paterno.", variant: "destructive" });
       return;
     }
     if (!email.trim()) {
@@ -46,7 +52,14 @@ export default function CambiarPasswordPage() {
       const res = await fetch("/api/delegado/change-password", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase(), phone: phone.trim() || undefined, newPassword }),
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          paternalLastName: paternalLastName.trim(),
+          maternalLastName: maternalLastName.trim() || undefined,
+          email: email.trim().toLowerCase(),
+          phone: phone.trim() || undefined,
+          newPassword,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -93,16 +106,41 @@ export default function CambiarPasswordPage() {
               <div className="space-y-3">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tus datos</p>
 
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName" className="flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" /> Nombre
+                    </Label>
+                    <Input
+                      id="firstName"
+                      placeholder="Ej: Carlos"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      autoComplete="given-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="paternalLastName">Apellido paterno</Label>
+                    <Input
+                      id="paternalLastName"
+                      placeholder="Ej: Mendoza"
+                      value={paternalLastName}
+                      onChange={(e) => setPaternalLastName(e.target.value)}
+                      autoComplete="family-name"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="flex items-center gap-1.5">
-                    <User className="h-3.5 w-3.5 text-muted-foreground" /> Nombre completo
+                  <Label htmlFor="maternalLastName">
+                    Apellido materno <span className="text-muted-foreground font-normal">(opcional)</span>
                   </Label>
                   <Input
-                    id="name"
-                    placeholder="Ej: Carlos Mendoza"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    autoComplete="name"
+                    id="maternalLastName"
+                    placeholder="Ej: Torres"
+                    value={maternalLastName}
+                    onChange={(e) => setMaternalLastName(e.target.value)}
+                    autoComplete="additional-name"
                   />
                 </div>
 

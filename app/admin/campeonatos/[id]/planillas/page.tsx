@@ -12,13 +12,14 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Trash2, Loader2, Users, Shield } from "lucide-react";
+import { ChevronLeft, Trash2, Loader2, Users, Shield, UserCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Player {
   dni: string;
   firstName: string;
-  lastName: string;
+  paternalLastName: string;
+  maternalLastName?: string | null;
 }
 
 interface RosterEntry {
@@ -26,13 +27,23 @@ interface RosterEntry {
   number: number;
   position: string;
   status: "inscrito" | "pendiente" | "rechazado";
+  photoUrl: string | null;
   player: Player;
+}
+
+interface Delegate {
+  id: string;
+  firstName: string;
+  paternalLastName: string;
+  maternalLastName?: string | null;
+  email: string;
 }
 
 interface Team {
   id: string;
   name: string;
   status: string;
+  delegate: Delegate | null;
   rosterEntries: RosterEntry[];
 }
 
@@ -167,7 +178,19 @@ export default function PlanillasPage({ params }: { params: Promise<{ id: string
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-display text-sm text-primary">
                     {team.name.charAt(0)}
                   </div>
-                  <span className="font-display text-lg">{team.name}</span>
+                  <div>
+                    <p className="font-display text-lg leading-tight">{team.name}</p>
+                    {team.delegate ? (
+                      <p className="text-xs text-muted-foreground font-normal flex items-center gap-1 mt-0.5">
+                        <UserCircle className="h-3 w-3" />
+                        {[team.delegate.firstName, team.delegate.paternalLastName, team.delegate.maternalLastName].filter(Boolean).join(" ")}
+                        <span className="text-muted-foreground/60">·</span>
+                        <span className="font-mono">{team.delegate.email}</span>
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/50 font-normal mt-0.5">Sin delegado asignado</p>
+                    )}
+                  </div>
                 </div>
                 <span className="text-xs text-muted-foreground font-normal">
                   {team.rosterEntries.length} jugador{team.rosterEntries.length !== 1 ? "es" : ""}
@@ -197,10 +220,17 @@ export default function PlanillasPage({ params }: { params: Promise<{ id: string
                           <TableCell className="font-display text-lg text-muted-foreground">{entry.number}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted font-display text-sm shrink-0">
-                                {entry.player.firstName.charAt(0)}
+                              <div className="h-9 w-9 rounded-full overflow-hidden shrink-0 bg-muted border">
+                                {entry.photoUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={entry.photoUrl} alt="foto" className="h-full w-full object-cover" />
+                                ) : (
+                                  <div className="h-full w-full flex items-center justify-center font-display text-sm text-muted-foreground">
+                                    {entry.player.firstName.charAt(0)}
+                                  </div>
+                                )}
                               </div>
-                              <p className="text-sm font-medium">{entry.player.firstName} {entry.player.lastName}</p>
+                              <p className="text-sm font-medium">{[entry.player.firstName, entry.player.paternalLastName, entry.player.maternalLastName].filter(Boolean).join(" ")}</p>
                             </div>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground font-mono">{entry.player.dni}</TableCell>
@@ -217,7 +247,7 @@ export default function PlanillasPage({ params }: { params: Promise<{ id: string
                                 onClick={() => setDeleteTarget({
                                   teamId: team.id,
                                   entryId: entry.id,
-                                  name: `${entry.player.firstName} ${entry.player.lastName}`,
+                                  name: [entry.player.firstName, entry.player.paternalLastName, entry.player.maternalLastName].filter(Boolean).join(" "),
                                 })}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />

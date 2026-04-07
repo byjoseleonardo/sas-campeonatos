@@ -27,43 +27,26 @@ async function main() {
   console.log("✅ Base de datos limpia.");
   console.log("🌱 Creando datos iniciales...");
 
-  // Administrador
-  const hashedAdmin = await bcrypt.hash("admin123", 10);
-  const admin = await prisma.user.create({
+  // Superadministrador
+  const hashedSuper = await bcrypt.hash("super123", 10);
+  const superadmin = await prisma.user.create({
     data: {
-      name: "Administrador",
-      email: "admin@champzone.com",
-      password: hashedAdmin,
+      firstName: "Super",
+      paternalLastName: "Administrador",
+      email: "super@champzone.com",
+      password: hashedSuper,
       isActive: true,
       mustChangePassword: false,
       userRoles: {
-        create: { role: "administrador" },
+        create: { role: "superadministrador" },
       },
     },
   });
-  console.log(`✅ Admin: ${admin.email} / admin123`);
-
-  // Organizador de prueba
-  const hashedOrg = await bcrypt.hash("org123", 10);
-  const org = await prisma.user.create({
-    data: {
-      name: "Organizador Demo",
-      email: "org@champzone.com",
-      password: hashedOrg,
-      isActive: true,
-      mustChangePassword: false,
-      userRoles: {
-        create: { role: "organizador" },
-      },
-    },
-  });
-  console.log(`✅ Organizador: ${org.email} / org123`);
 
   console.log("\n✅ Seed completado.");
-  console.log("─────────────────────────────────");
-  console.log("  admin@champzone.com  →  admin123");
-  console.log("  org@champzone.com    →  org123");
-  console.log("─────────────────────────────────");
+  console.log("──────────────────────────────────────────");
+  console.log(`  ${superadmin.email}  →  super123  (superadmin)`);
+  console.log("──────────────────────────────────────────");
 }
 
 main()

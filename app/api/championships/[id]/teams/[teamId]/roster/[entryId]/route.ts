@@ -15,15 +15,12 @@ export async function DELETE(
 
   const { id, teamId, entryId } = await params;
 
-  // Verificar que es admin o organizador
-  const isAdmin = session.user.role === "administrador";
-  if (!isAdmin) {
-    const isOrg = await prisma.userRole.findFirst({
-      where: { userId: session.user.id, role: "organizador", championshipId: id },
-    });
-    if (!isOrg) {
-      return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
-    }
+  // Solo el organizador dueño del campeonato puede eliminar jugadores
+  const isOrg = await prisma.userRole.findFirst({
+    where: { userId: session.user.id, role: "organizador", championshipId: id },
+  });
+  if (!isOrg) {
+    return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
   }
 
   // Verificar que el campeonato no ha iniciado

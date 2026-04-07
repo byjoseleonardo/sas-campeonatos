@@ -8,7 +8,7 @@ const roleLabel: Record<string, string> = {
   administrador: "Panel de Administración",
   organizador:   "Portal Organizador",
   supervisor:    "Portal Supervisor",
-  tecnico:       "Portal Técnico",
+  tecnico_mesa:  "Portal Técnico de Mesa",
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

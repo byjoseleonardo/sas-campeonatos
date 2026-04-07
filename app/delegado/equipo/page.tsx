@@ -46,7 +46,8 @@ interface RosterEntry {
   player: {
     dni: string;
     firstName: string;
-    lastName: string;
+    paternalLastName: string;
+    maternalLastName?: string | null;
   };
 }
 
@@ -224,7 +225,7 @@ export default function DelegadoEquipoPage() {
                           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted font-display text-sm shrink-0">
                             {entry.player.firstName.charAt(0)}
                           </div>
-                          <p className="text-sm font-medium">{entry.player.firstName} {entry.player.lastName}</p>
+                          <p className="text-sm font-medium">{[entry.player.firstName, entry.player.paternalLastName, entry.player.maternalLastName].filter(Boolean).join(" ")}</p>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground font-mono">{entry.player.dni}</TableCell>

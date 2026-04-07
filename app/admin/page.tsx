@@ -24,8 +24,8 @@ const stats = [
     href: "/admin/roles",
   },
   {
-    label: "Técnicos",
-    value: adminUsers.filter((u) => u.role === "tecnico").length,
+    label: "Técnicos de Mesa",
+    value: adminUsers.filter((u) => u.role === "tecnico_mesa").length,
     icon: Users,
     color: "text-primary",
     bg: "bg-primary/10",
