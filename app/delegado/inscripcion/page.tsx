@@ -25,9 +25,7 @@ interface Championship {
   name: string;
   sport: string;
   location: string | null;
-  titulares: number;
-  suplentes: number;
-  minSuplentes: number;
+  minJugadores: number;
   maxInscripciones: number;
 }
 
@@ -196,17 +194,13 @@ export default function DelegadoInscripcionPage() {
 
   const selectedChamp = championships.find((c) => c.id === selectedChampId);
   const maxJugadores = team?.championship.maxInscripciones ?? selectedChamp?.maxInscripciones ?? 22;
-  const minSuplentes = team?.championship.minSuplentes ?? selectedChamp?.minSuplentes ?? 5;
-  const titulares = team?.championship.titulares ?? selectedChamp?.titulares ?? 11;
+  const minJugadores = team?.championship.minJugadores ?? selectedChamp?.minJugadores ?? 8;
   const inscritos = roster.filter((r) => r.status === "inscrito").length;
   const pendientes = roster.filter((r) => r.status === "pendiente").length;
   const disponibles = maxJugadores - roster.length;
 
   // Progreso de planilla
-  const suplentesActuales = Math.max(0, roster.length - titulares);
-  const titularesCompletos = roster.length >= titulares;
-  const suplentesCompletos = suplentesActuales >= minSuplentes;
-  const planillaCompleta = titularesCompletos && suplentesCompletos;
+  const planillaCompleta = roster.length >= minJugadores;
 
   const filteredRoster = roster.filter((r) =>
     `${r.player.firstName} ${r.player.paternalLastName} ${r.player.maternalLastName ?? ""}`.toLowerCase().includes(search.toLowerCase()) ||
@@ -294,13 +288,7 @@ export default function DelegadoInscripcionPage() {
                 <span className="font-medium">Planilla completa — puedes enviarla para validación</span>
               ) : (
                 <span>
-                  {!titularesCompletos && (
-                    <>Faltan <strong>{titulares - roster.length}</strong> titular{titulares - roster.length !== 1 ? "es" : ""} · </>
-                  )}
-                  {titularesCompletos && !suplentesCompletos && (
-                    <>Faltan <strong>{minSuplentes - suplentesActuales}</strong> suplente{minSuplentes - suplentesActuales !== 1 ? "s" : ""} mínimos · </>
-                  )}
-                  Mínimo: <strong>{titulares}</strong> titulares + <strong>{minSuplentes}</strong> suplentes · Total permitido: <strong>{maxJugadores}</strong> jugadores
+                  Faltan <strong>{minJugadores - roster.length}</strong> jugador{minJugadores - roster.length !== 1 ? "es" : ""} · Mínimo requerido: <strong>{minJugadores}</strong> · Total permitido: <strong>{maxJugadores}</strong>
                 </span>
               )}
             </div>

@@ -19,8 +19,7 @@ export interface ChampionshipConfig {
   name: string;
   sportId: string;
   format: string;
-  titulares: number;
-  suplentes: number;
+  minJugadores: number;
   maxInscripciones: number;
   matchDuration: number;
   location: string;
