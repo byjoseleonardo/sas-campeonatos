@@ -14,11 +14,9 @@ const updateSchema = z.object({
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   matchDurationMin: z.number().int().min(1).optional(),
-  titulares: z.number().int().min(1).optional(),
-  suplentes: z.number().int().min(0).optional(),
   maxInscripciones: z.number().int().min(1).optional(),
+  minJugadores: z.number().int().min(1).optional(),
   maxEquipos: z.number().int().min(0).optional(),
-  minSuplentes: z.number().int().min(0).optional(),
   tecnicoIds: z.array(z.string()).optional(),
 });
 

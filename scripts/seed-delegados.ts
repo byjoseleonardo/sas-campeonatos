@@ -4,7 +4,7 @@
  * Pobla los delegados del campeonato personalizado más reciente con:
  *  - Cuenta configurada (nombre real, email, contraseña, mustChangePassword=false)
  *  - Equipo registrado
- *  - Planilla completa (titulares + minSuplentes jugadores)
+ *  - Planilla completa (minJugadores jugadores)
  *
  * Uso:
  *   npx tsx scripts/seed-delegados.ts
@@ -76,7 +76,7 @@ async function main() {
   }
 
   console.log(`\n🏆 Campeonato: ${championship.name} (${championship.slug})`);
-  console.log(`   Titulares: ${championship.titulares} | Min. suplentes: ${championship.minSuplentes} | Max equipos: ${championship.maxEquipos}\n`);
+  console.log(`   Min. jugadores: ${championship.minJugadores} | Max. jugadores: ${championship.maxInscripciones} | Max equipos: ${championship.maxEquipos}\n`);
 
   // Obtener delegados del campeonato
   const delegadoRoles = await prisma.userRole.findMany({
@@ -153,7 +153,7 @@ async function main() {
 
     // 4. Contar jugadores ya inscritos
     const existingRoster = await prisma.rosterEntry.count({ where: { teamId } });
-    const totalJugadoresNecesarios = championship.titulares + championship.minSuplentes;
+    const totalJugadoresNecesarios = championship.minJugadores;
 
     if (existingRoster >= totalJugadoresNecesarios) {
       console.log(`   ⚠️  Ya tiene ${existingRoster} jugadores — omitiendo planilla`);

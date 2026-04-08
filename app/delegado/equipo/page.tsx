@@ -31,8 +31,7 @@ interface Team {
     sport: string;
     location: string | null;
     startDate: string | null;
-    titulares: number;
-    suplentes: number;
+    minJugadores: number;
     maxInscripciones: number;
   };
   _count: { rosterEntries: number };
@@ -101,9 +100,9 @@ export default function DelegadoEquipoPage() {
   }
 
   const maxPlayers = team.championship.maxInscripciones;
+  const minJugadores = team.championship.minJugadores;
   const inscritos = roster.filter((r) => r.status === "inscrito").length;
-  const titulares = team.championship.titulares;
-  const planillaCompleta = inscritos >= titulares;
+  const planillaCompleta = inscritos >= minJugadores;
 
   return (
     <div className="space-y-6">
@@ -146,7 +145,7 @@ export default function DelegadoEquipoPage() {
               <div>
                 <p className="text-xs text-muted-foreground">Jugadores</p>
                 <p className="text-sm font-medium">{team._count.rosterEntries} / {maxPlayers}</p>
-                <p className="text-xs text-muted-foreground">{team.championship.titulares} titulares · {team.championship.suplentes} suplentes</p>
+                <p className="text-xs text-muted-foreground">Mín. {minJugadores} requeridos</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -190,7 +189,7 @@ export default function DelegadoEquipoPage() {
         <span className="flex-1">
           {planillaCompleta
             ? <span className="font-medium">Planilla completa</span>
-            : <>Faltan <strong>{titulares - inscritos}</strong> jugadores para completar los titulares</>
+            : <>Faltan <strong>{minJugadores - inscritos}</strong> jugador{minJugadores - inscritos !== 1 ? "es" : ""} para completar el mínimo requerido</>
           }
         </span>
         <span className="text-xs font-mono opacity-60 shrink-0">{inscritos}/{maxPlayers}</span>

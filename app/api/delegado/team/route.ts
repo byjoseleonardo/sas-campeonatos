@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
         ...(championshipId ? { championshipId } : {}),
       },
       include: {
-        championship: { select: { id: true, name: true, sport: true, titulares: true, suplentes: true, maxInscripciones: true } },
+        championship: { select: { id: true, name: true, sport: true, minJugadores: true, maxInscripciones: true } },
         _count: { select: { rosterEntries: true } },
       },
     });
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
         delegateId: session.user.id,
       },
       include: {
-        championship: { select: { id: true, name: true, sport: true, titulares: true, suplentes: true, maxInscripciones: true } },
+        championship: { select: { id: true, name: true, sport: true, minJugadores: true, maxInscripciones: true } },
         _count: { select: { rosterEntries: true } },
       },
     });

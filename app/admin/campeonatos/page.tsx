@@ -51,9 +51,8 @@ interface Championship {
   startDate: string | null;
   endDate: string | null;
   matchDurationMin: number;
-  titulares: number;
-  suplentes: number;
-  minSuplentes: number;
+  minJugadores: number;
+  maxInscripciones: number;
   maxEquipos: number;
   createdBy: { id: string; firstName: string; paternalLastName: string };
   userRoles: { role: string; user: { id: string; firstName: string; paternalLastName: string; email: string } }[];
@@ -69,9 +68,8 @@ export type FormState = {
   endDate: string;
   maxEquipos: number;
   matchDurationMin: number;
-  titulares: number;
-  suplentes: number;
-  minSuplentes: number;
+  maxInscripciones: number;
+  minJugadores: number;
   tecnicoIds: string[];
 };
 
@@ -122,9 +120,8 @@ export const emptyForm: FormState = {
   endDate: "",
   maxEquipos: 0,
   matchDurationMin: 90,
-  titulares: 11,
-  suplentes: 7,
-  minSuplentes: 5,
+  maxInscripciones: 0,
+  minJugadores: 0,
   tecnicoIds: [],
 };
 
@@ -232,19 +229,6 @@ function ChampionshipForm({ form, setForm, tecnicos }: ChampionshipFormProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label>Mín. suplentes</Label>
-            <Input
-              type="number"
-              min={0}
-              max={form.suplentes}
-              value={form.minSuplentes}
-              onChange={(e) => setForm({ ...form, minSuplentes: Number(e.target.value) })}
-            />
-            <p className="text-xs text-muted-foreground">Mínimo requerido para completar planilla</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
             <Label className="flex items-center gap-1.5">
               <Users className="h-3.5 w-3.5 text-muted-foreground" /> N° de equipos
             </Label>
@@ -254,27 +238,30 @@ function ChampionshipForm({ form, setForm, tecnicos }: ChampionshipFormProps) {
               value={form.maxEquipos}
               onChange={(e) => setForm({ ...form, maxEquipos: Number(e.target.value) })}
             />
-            <p className="text-xs text-muted-foreground">Se generarán credenciales de delegado automáticamente</p>
+            <p className="text-xs text-muted-foreground">Se generarán credenciales automáticamente</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label>Titulares</Label>
+            <Label>Máx. jugadores por equipo</Label>
             <Input
               type="number"
               min={1}
-              value={form.titulares}
-              onChange={(e) => setForm({ ...form, titulares: Number(e.target.value) })}
+              value={form.maxInscripciones}
+              onChange={(e) => setForm({ ...form, maxInscripciones: Number(e.target.value) })}
             />
+            <p className="text-xs text-muted-foreground">Total permitido en la planilla</p>
           </div>
           <div className="space-y-2">
-            <Label>Suplentes</Label>
+            <Label>Mín. requerido para inscribir</Label>
             <Input
               type="number"
-              min={0}
-              value={form.suplentes}
-              onChange={(e) => setForm({ ...form, suplentes: Number(e.target.value) })}
+              min={1}
+              max={form.maxInscripciones}
+              value={form.minJugadores}
+              onChange={(e) => setForm({ ...form, minJugadores: Number(e.target.value) })}
             />
+            <p className="text-xs text-muted-foreground">Mínimo para aceptar la inscripción</p>
           </div>
         </div>
       </div>
@@ -357,6 +344,10 @@ export default function AdminChampionshipsPage() {
       toast({ title: "Campos incompletos", description: "Nombre, deporte y formato son obligatorios.", variant: "destructive" });
       return;
     }
+    if (!form.maxInscripciones || !form.minJugadores) {
+      toast({ title: "Campos incompletos", description: "Define el máximo y mínimo de jugadores.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/championships", {
@@ -365,9 +356,8 @@ export default function AdminChampionshipsPage() {
         body: JSON.stringify({
           ...form,
           matchDurationMin: Number(form.matchDurationMin),
-          titulares: Number(form.titulares),
-          suplentes: Number(form.suplentes),
-          maxInscripciones: Number(form.titulares) + Number(form.suplentes),
+          maxInscripciones: Number(form.maxInscripciones),
+          minJugadores: Number(form.minJugadores),
           tecnicoIds: form.tecnicoIds.length ? form.tecnicoIds : undefined,
         }),
       });
@@ -395,9 +385,8 @@ export default function AdminChampionshipsPage() {
       startDate: c.startDate ? c.startDate.slice(0, 10) : "",
       endDate: c.endDate ? c.endDate.slice(0, 10) : "",
       matchDurationMin: c.matchDurationMin,
-      titulares: c.titulares,
-      suplentes: c.suplentes,
-      minSuplentes: c.minSuplentes ?? 5,
+      maxInscripciones: c.maxInscripciones,
+      minJugadores: c.minJugadores,
       maxEquipos: c.maxEquipos ?? 0,
       tecnicoIds: tecRoles.map((r) => r.user.id),
     });
@@ -414,9 +403,8 @@ export default function AdminChampionshipsPage() {
         body: JSON.stringify({
           ...form,
           matchDurationMin: Number(form.matchDurationMin),
-          titulares: Number(form.titulares),
-          suplentes: Number(form.suplentes),
-          maxInscripciones: Number(form.titulares) + Number(form.suplentes),
+          maxInscripciones: Number(form.maxInscripciones),
+          minJugadores: Number(form.minJugadores),
           tecnicoIds: form.tecnicoIds,
         }),
       });
@@ -602,7 +590,7 @@ export default function AdminChampionshipsPage() {
                       <TableCell>
                         <div className="text-xs text-muted-foreground space-y-0.5">
                           <p>{c.matchDurationMin} min</p>
-                          <p>{c.titulares}+{c.suplentes} jug.</p>
+                          <p>Máx. {c.maxInscripciones} · Mín. {c.minJugadores} jug.</p>
                         </div>
                       </TableCell>
                       <TableCell>
