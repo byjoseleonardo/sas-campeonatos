@@ -38,7 +38,7 @@ export async function PATCH(
     }
 
     const champ = await prisma.championship.findUnique({ where: { id }, select: { status: true } });
-    if (champ?.status === "en_curso" || champ?.status === "finalizado") {
+    if (champ?.status === "finalizado") {
       return NextResponse.json({ error: "No se puede modificar un campeonato iniciado" }, { status: 409 });
     }
 
@@ -74,7 +74,7 @@ export async function DELETE(
     }
 
     const champ = await prisma.championship.findUnique({ where: { id }, select: { status: true } });
-    if (champ?.status === "en_curso" || champ?.status === "finalizado") {
+    if (champ?.status === "finalizado") {
       return NextResponse.json({ error: "No se puede modificar un campeonato iniciado" }, { status: 409 });
     }
 

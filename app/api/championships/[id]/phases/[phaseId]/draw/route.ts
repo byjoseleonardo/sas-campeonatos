@@ -80,7 +80,7 @@ export async function POST(
     if (!phase || phase.championshipId !== championshipId) {
       return NextResponse.json({ error: "Fase no encontrada" }, { status: 404 });
     }
-    if (phase.type !== "grupos" && phase.type !== "eliminacion") {
+    if (phase.type !== "grupos" && phase.type !== "eliminacion" && phase.type !== "final") {
       return NextResponse.json({ error: "Esta fase no requiere sorteo" }, { status: 400 });
     }
 
@@ -159,7 +159,7 @@ export async function POST(
 
     // ── Sorteo de eliminación con byes ─────────────────────────────────────
 
-    if (phase.type === "eliminacion") {
+    if (phase.type === "eliminacion" || phase.type === "final") {
       const n = shuffled.length;
       const slots = nextPowerOf2(n);
       const byes = slots - n;

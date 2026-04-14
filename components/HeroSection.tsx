@@ -38,7 +38,7 @@ const HeroSection = () => {
                 Ver Campeonatos <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" className="border-secondary-foreground/20 text-secondary-foreground hover:bg-secondary-foreground/10" asChild>
+            <Button size="lg" variant="outline" className="border-white/40 text-white bg-white/10 hover:bg-white/20 hover:text-white" asChild>
               <Link href="/equipos">Explorar Equipos</Link>
             </Button>
           </div>

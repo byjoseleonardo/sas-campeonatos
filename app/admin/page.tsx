@@ -1,59 +1,128 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Users, UserCheck, Shield, Activity, Calendar } from "lucide-react";
-import { championships } from "@/lib/mockData";
-import { adminUsers } from "@/lib/adminMockData";
+import { Trophy, Users, UserCheck, Shield, Activity, Swords, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 
-const stats = [
-  {
-    label: "Campeonatos",
-    value: championships.length,
-    icon: Trophy,
-    color: "text-primary",
-    bg: "bg-primary/10",
-    href: "/admin/campeonatos",
-  },
-  {
-    label: "Organizadores",
-    value: adminUsers.filter((u) => u.role === "organizador").length,
-    icon: Shield,
-    color: "text-accent-foreground",
-    bg: "bg-accent/15",
-    href: "/admin/roles",
-  },
-  {
-    label: "Técnicos de Mesa",
-    value: adminUsers.filter((u) => u.role === "tecnico_mesa").length,
-    icon: Users,
-    color: "text-primary",
-    bg: "bg-primary/10",
-    href: "/admin/tecnicos",
-  },
-  {
-    label: "Delegados",
-    value: adminUsers.filter((u) => u.role === "delegado").length,
-    icon: UserCheck,
-    color: "text-secondary-foreground",
-    bg: "bg-secondary/50",
-    href: "/admin/delegados",
-  },
-];
+interface Championship {
+  id: string;
+  name: string;
+  status: string;
+  sport: string;
+  _count: { teams: number };
+}
+
+interface RecentUser {
+  id: string;
+  firstName: string;
+  paternalLastName: string;
+  email: string;
+  userRoles: { role: string }[];
+}
+
+interface DashboardData {
+  championships: Championship[];
+  stats: {
+    total: number;
+    tecnicos: number;
+    delegados: number;
+    supervisores: number;
+    liveMatches: number;
+  };
+  recentUsers: RecentUser[];
+}
+
+const statusBadge: Record<string, string> = {
+  inscripciones: "bg-accent/15 text-accent-foreground",
+  en_curso:      "bg-primary/15 text-primary",
+  finalizado:    "bg-muted text-muted-foreground",
+  borrador:      "bg-muted text-muted-foreground",
+};
+
+const statusLabel: Record<string, string> = {
+  inscripciones: "Inscripciones",
+  en_curso:      "En curso",
+  finalizado:    "Finalizado",
+  borrador:      "Borrador",
+};
+
+const sportLabel: Record<string, string> = {
+  futbol: "Fútbol", futsal: "Futsal", baloncesto: "Baloncesto", voleibol: "Voleibol",
+};
+
+const roleLabel: Record<string, string> = {
+  tecnico_mesa: "Técnico Mesa",
+  delegado:     "Delegado",
+  supervisor:   "Supervisor",
+  organizador:  "Organizador",
+};
 
 export default function AdminDashboardPage() {
-  const activeChamps = championships.filter((c) => c.status === "activo");
-  const recentUsers = adminUsers.slice(0, 5);
+  const [data, setData]     = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/admin/dashboard")
+      .then((r) => r.json())
+      .then(setData)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-24">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const stats = [
+    {
+      label: "Campeonatos",
+      value: data?.stats.total ?? 0,
+      icon: Trophy,
+      color: "text-primary",
+      bg: "bg-primary/10",
+      href: "/admin/campeonatos",
+    },
+    {
+      label: "Técnicos de Mesa",
+      value: data?.stats.tecnicos ?? 0,
+      icon: Users,
+      color: "text-primary",
+      bg: "bg-primary/10",
+      href: "/admin/tecnicos",
+    },
+    {
+      label: "Delegados",
+      value: data?.stats.delegados ?? 0,
+      icon: UserCheck,
+      color: "text-secondary-foreground",
+      bg: "bg-secondary/50",
+      href: "/admin/delegados",
+    },
+    {
+      label: "Supervisores",
+      value: data?.stats.supervisores ?? 0,
+      icon: Shield,
+      color: "text-accent-foreground",
+      bg: "bg-accent/15",
+      href: "/admin/roles",
+    },
+  ];
+
+  const activeChamps = data?.championships.filter((c) => c.status === "en_curso") ?? [];
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="font-display text-4xl text-foreground">DASHBOARD</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Resumen general del sistema
-        </p>
+        <p className="text-muted-foreground text-sm mt-1">Resumen general del sistema</p>
       </div>
 
+      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <Link key={s.label} href={s.href}>
@@ -72,66 +141,77 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
+      {/* Partidos en vivo */}
+      {(data?.stats.liveMatches ?? 0) > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+          <p className="text-sm font-medium text-primary">
+            {data?.stats.liveMatches} {data?.stats.liveMatches === 1 ? "partido en curso" : "partidos en curso"}
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* Campeonatos activos */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Activity className="h-4 w-4 text-primary" />
-              Campeonatos Activos
+              Campeonatos
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {activeChamps.map((c) => (
-              <div
-                key={c.id}
-                className="flex items-center justify-between rounded-lg border p-3"
-              >
-                <div>
-                  <p className="font-medium text-sm">{c.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {c.sport} · {c.teams} equipos
-                  </p>
-                </div>
-                <span className="rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-medium text-primary">
-                  En curso
-                </span>
-              </div>
-            ))}
-            {activeChamps.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No hay campeonatos activos
-              </p>
+          <CardContent className="space-y-2">
+            {data?.championships.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No hay campeonatos creados</p>
+            ) : (
+              data?.championships.slice(0, 5).map((c) => (
+                <Link key={c.id} href={`/admin/campeonatos/${c.id}/fases`}>
+                  <div className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors cursor-pointer">
+                    <div>
+                      <p className="font-medium text-sm">{c.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {sportLabel[c.sport] ?? c.sport} · {c._count.teams} equipos
+                      </p>
+                    </div>
+                    <Badge className={`text-xs border-0 ${statusBadge[c.status]}`}>
+                      {statusLabel[c.status]}
+                    </Badge>
+                  </div>
+                </Link>
+              ))
             )}
           </CardContent>
         </Card>
 
+        {/* Usuarios recientes */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Calendar className="h-4 w-4 text-primary" />
+              <Swords className="h-4 w-4 text-primary" />
               Usuarios Recientes
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {recentUsers.map((u) => (
-              <div
-                key={u.id}
-                className="flex items-center justify-between rounded-lg border p-3"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted font-display text-sm">
-                    {u.name.charAt(0)}
+          <CardContent className="space-y-2">
+            {data?.recentUsers.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No hay usuarios asignados</p>
+            ) : (
+              data?.recentUsers.map((u) => (
+                <div key={u.id} className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted font-display text-sm shrink-0">
+                      {u.firstName.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{u.firstName} {u.paternalLastName}</p>
+                      <p className="text-xs text-muted-foreground">{u.email}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">{u.name}</p>
-                    <p className="text-xs text-muted-foreground">{u.email}</p>
-                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    {roleLabel[u.userRoles[0]?.role] ?? u.userRoles[0]?.role ?? "—"}
+                  </span>
                 </div>
-                <span className="text-xs capitalize text-muted-foreground">
-                  {u.role}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
