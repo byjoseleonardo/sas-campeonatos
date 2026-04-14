@@ -206,7 +206,7 @@ export default function PlanillasPage({ params }: { params: Promise<{ id: string
                     <TableRow>
                       <TableHead className="w-12">#</TableHead>
                       <TableHead>Jugador</TableHead>
-                      <TableHead>Cédula</TableHead>
+                      <TableHead>N° CIP</TableHead>
                       <TableHead>Posición</TableHead>
                       <TableHead>Estado</TableHead>
                       {editable && <TableHead className="text-right">Acción</TableHead>}

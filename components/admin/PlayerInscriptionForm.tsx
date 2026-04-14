@@ -19,6 +19,10 @@ interface LookupResult {
   paternalLastName: string;
   maternalLastName?: string | null;
   gender: string | null;
+  especialidad?: string | null;
+  sede?: string | null;
+  estado?: string | null;
+  estadoCol?: string | null;
 }
 
 interface PlayerInscriptionFormProps {
@@ -81,8 +85,8 @@ const PlayerInscriptionForm = ({
   };
 
   const handleDniSearch = async () => {
-    if (dni.length < 6) {
-      toast({ title: "DNI inválido", description: "Ingresa al menos 6 dígitos.", variant: "destructive" });
+    if (dni.length < 4) {
+      toast({ title: "N° CIP inválido", description: "Ingresa al menos 4 dígitos.", variant: "destructive" });
       return;
     }
     setLookupStatus("loading");
@@ -187,25 +191,25 @@ const PlayerInscriptionForm = ({
         </DialogHeader>
         <div className="space-y-4 py-2">
 
-          {/* DNI Lookup */}
+          {/* CIP Lookup */}
           <div className="space-y-2">
-            <Label>Cédula / DNI</Label>
+            <Label>N° CIP</Label>
             <div className="flex gap-2">
               <Input
-                placeholder="Ej: 12345678"
+                placeholder="Ej: 100429"
                 value={dni}
                 onChange={(e) => {
                   setDni(e.target.value.replace(/\D/g, ""));
                   if (lookupStatus !== "idle") { setLookupStatus("idle"); setLookupResult(null); }
                 }}
                 onKeyDown={handleDniKeyDown}
-                maxLength={13}
+                maxLength={8}
                 className="font-mono"
               />
               <Button
                 variant="secondary"
                 onClick={handleDniSearch}
-                disabled={lookupStatus === "loading" || dni.length < 6}
+                disabled={lookupStatus === "loading" || dni.length < 4}
                 className="shrink-0 gap-1.5"
               >
                 {lookupStatus === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
@@ -214,13 +218,13 @@ const PlayerInscriptionForm = ({
             </div>
           </div>
 
-          {/* Encontrado en el sistema o RENIEC */}
+          {/* Encontrado en el sistema o CIP */}
           {lookupStatus === "found" && lookupResult && (
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
               <div className="flex items-center gap-2 text-primary">
                 <CheckCircle2 className="h-4 w-4" />
                 <span className="text-sm font-medium">
-                  {lookupResult.source === "local" ? "Jugador encontrado en el sistema" : "Datos obtenidos del RENIEC"}
+                  {lookupResult.source === "local" ? "Ingeniero encontrado en el sistema" : "Datos obtenidos del CIP"}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -231,9 +235,29 @@ const PlayerInscriptionForm = ({
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">DNI</p>
+                  <p className="text-muted-foreground text-xs">N° CIP</p>
                   <p className="font-mono">{dni}</p>
                 </div>
+                {lookupResult.especialidad && (
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground text-xs">Especialidad</p>
+                    <p className="font-medium">{lookupResult.especialidad}</p>
+                  </div>
+                )}
+                {lookupResult.sede && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Sede</p>
+                    <p className="font-medium">{lookupResult.sede}</p>
+                  </div>
+                )}
+                {lookupResult.estadoCol && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Estado</p>
+                    <p className={`font-medium ${lookupResult.estadoCol === "HABILITADO" ? "text-primary" : "text-destructive"}`}>
+                      {lookupResult.estadoCol}
+                    </p>
+                  </div>
+                )}
                 {lookupResult.gender && (
                   <div>
                     <p className="text-muted-foreground text-xs">Género</p>
@@ -252,6 +276,7 @@ const PlayerInscriptionForm = ({
                 <div>
                   <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Jugador no encontrado</p>
                   <p className="text-xs text-muted-foreground">Ingresa los datos manualmente para registrarlo</p>
+                  <p className="text-xs text-muted-foreground">Verifica que el N° CIP sea correcto</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">

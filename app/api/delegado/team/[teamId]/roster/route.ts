@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { z } from "zod";
 
 const addPlayerSchema = z.object({
-  dni: z.string().min(6, "DNI inválido"),
+  dni: z.string().min(4, "N° CIP inválido"),
   firstName: z.string().min(2),
   paternalLastName: z.string().min(2),
   maternalLastName: z.string().optional(),
