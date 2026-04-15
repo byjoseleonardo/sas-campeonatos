@@ -40,6 +40,7 @@ interface PlayerInscriptionFormProps {
     position: string;
     photoUrl: string | null;
     gender?: string | null;
+    email?: string | null;
   }) => void;
 }
 
@@ -61,6 +62,7 @@ const PlayerInscriptionForm = ({
   const [manualMaternalLastName, setManualMaternalLastName] = useState("");
   const [manualGender, setManualGender] = useState("");
   // Campos comunes
+  const [email, setEmail] = useState("");
   const [playerNumber, setPlayerNumber] = useState("");
   const [position, setPosition] = useState("");
   // Foto
@@ -78,6 +80,7 @@ const PlayerInscriptionForm = ({
     setManualPaternalLastName("");
     setManualMaternalLastName("");
     setManualGender("");
+    setEmail("");
     setPlayerNumber("");
     setPosition("");
     setPhotoPreview(null);
@@ -168,7 +171,7 @@ const PlayerInscriptionForm = ({
     const maternalLastName = lookupStatus === "found" ? lookupResult!.maternalLastName : manualMaternalLastName.trim() || null;
     const gender           = lookupStatus === "found" ? lookupResult!.gender           : manualGender || null;
 
-    onInscribir({ firstName, paternalLastName, maternalLastName, dni, number: parseInt(playerNumber), position, photoUrl, gender });
+    onInscribir({ firstName, paternalLastName, maternalLastName, dni, number: parseInt(playerNumber), position, photoUrl, gender, email: email.trim() || null });
     resetForm();
     setOpen(false);
   };
@@ -309,6 +312,16 @@ const PlayerInscriptionForm = ({
           {/* Número, posición y foto */}
           {showFields && (
             <>
+              <div className="space-y-2">
+                <Label>Correo electrónico <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                <Input
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Número de camiseta <span className="text-destructive">*</span></Label>

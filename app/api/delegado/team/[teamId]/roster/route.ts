@@ -9,6 +9,7 @@ const addPlayerSchema = z.object({
   paternalLastName: z.string().min(2),
   maternalLastName: z.string().optional(),
   gender: z.string().optional(),
+  email: z.string().email("Correo inválido").optional().or(z.literal("")),
   number: z.number().int().min(1).max(99),
   position: z.string().min(1, "La posición es requerida"),
   photoUrl: z.string().optional(),
@@ -106,6 +107,7 @@ export async function POST(
           paternalLastName: data.paternalLastName,
           maternalLastName: data.maternalLastName || null,
           gender: data.gender,
+          email: data.email || null,
         },
       });
     }

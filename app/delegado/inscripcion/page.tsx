@@ -149,7 +149,7 @@ export default function DelegadoInscripcionPage() {
   const handleInscribir = async (player: {
     firstName: string; paternalLastName: string; maternalLastName?: string | null;
     dni: string; number: number; position: string;
-    photoUrl: string | null; gender?: string | null;
+    photoUrl: string | null; gender?: string | null; email?: string | null;
   }) => {
     if (!team?.id) return;
     try {
@@ -165,6 +165,7 @@ export default function DelegadoInscripcionPage() {
           position: player.position,
           photoUrl: player.photoUrl ?? undefined,
           gender: player.gender ?? undefined,
+          email: player.email ?? undefined,
         }),
       });
       const data = await res.json();

@@ -23,8 +23,8 @@ interface CipApiResponse {
   detalle?: CipDetalleResponse;
 }
 
-const CIP_API_URL = "https://cipocr.ciphuanuco.org.pe/api/cip/consultar-completo";
-const CIP_API_KEY = "b3ded10e2d93a85cf6a72316d9a37855b37688bbc20f443dc36e7c6a82d89adc";
+const CIP_API_URL = process.env.CIP_API_URL!;
+const CIP_API_KEY = process.env.CIP_API_KEY!;
 
 const toTitle = (s: string) =>
   s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
