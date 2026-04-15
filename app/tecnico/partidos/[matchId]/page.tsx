@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Loader2, Plus, Trash2, Play, Square, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Loader2, Play, Square, AlertTriangle, ClipboardList, Gamepad2, Undo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -52,14 +52,14 @@ interface MatchDetail {
   awayRoster: RosterEntry[];
 }
 
-// ─── Labels ───────────────────────────────────────────────────────────────────
+// ─── Constantes ───────────────────────────────────────────────────────────────
 
 const eventLabels: Record<string, string> = {
-  gol:          "Gol",
-  gol_en_contra:"Gol en contra",
-  amarilla:     "Amarilla",
-  roja:         "Roja",
-  roja_directa: "Roja directa",
+  gol:           "Gol",
+  gol_en_contra: "Gol en contra",
+  amarilla:      "Amarilla",
+  roja:          "Roja",
+  roja_directa:  "Roja directa",
 };
 
 const eventIcon: Record<string, string> = {
@@ -80,13 +80,34 @@ const statusLabel: Record<string, string> = {
 
 const statusBadge: Record<string, string> = {
   programado: "bg-muted text-muted-foreground",
-  en_curso:   "bg-primary/15 text-primary",
-  finalizado: "bg-green-500/15 text-green-700",
+  en_curso:   "bg-green-500/20 text-green-500 border-green-500/30",
+  finalizado: "bg-muted text-muted-foreground",
   suspendido: "bg-destructive/15 text-destructive",
   postergado: "bg-amber-500/15 text-amber-700",
 };
 
+const statusBarColor: Record<string, string> = {
+  programado: "bg-muted/40 text-muted-foreground",
+  en_curso:   "bg-green-500/15 text-green-500 border border-green-500/20",
+  finalizado: "bg-muted/40 text-muted-foreground",
+  suspendido: "bg-destructive/10 text-destructive",
+  postergado: "bg-amber-500/10 text-amber-600",
+};
+
+// ─── Componente avatar de equipo ──────────────────────────────────────────────
+
+function TeamAvatar({ name }: { name: string }) {
+  return (
+    <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0">
+      {name.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
 // ─── Página ───────────────────────────────────────────────────────────────────
+
+type Tab = "control" | "planilla";
+type QuickEventType = "gol" | "amarilla" | "roja";
 
 export default function MatchControlPage({
   params,
@@ -100,19 +121,20 @@ export default function MatchControlPage({
   const [match, setMatch]     = useState<MatchDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing]   = useState(false);
+  const [tab, setTab]         = useState<Tab>("control");
 
-  // Formulario de evento
-  const [eventOpen, setEventOpen]       = useState(false);
-  const [eventSaving, setEventSaving]   = useState(false);
-  const [eventTeamId, setEventTeamId]   = useState("");
-  const [eventType, setEventType]       = useState("");
-  const [eventPlayerId, setEventPlayerId] = useState("");
-  const [eventMinute, setEventMinute]   = useState<number | "">("");
+  // Mini-modal para registrar evento rápido
+  const [quickOpen, setQuickOpen]       = useState(false);
+  const [quickTeamId, setQuickTeamId]   = useState("");
+  const [quickType, setQuickType]       = useState<QuickEventType>("gol");
+  const [quickPlayerId, setQuickPlayerId] = useState("");
+  const [quickMinute, setQuickMinute]   = useState<number | "">("");
+  const [quickSaving, setQuickSaving]   = useState(false);
 
   // Walkover
-  const [woOpen, setWoOpen]           = useState(false);
-  const [woWinner, setWoWinner]       = useState("");
-  const [woActing, setWoActing]       = useState(false);
+  const [woOpen, setWoOpen]     = useState(false);
+  const [woWinner, setWoWinner] = useState("");
+  const [woActing, setWoActing] = useState(false);
 
   // Confirmar finalizar
   const [finalizarOpen, setFinalizarOpen] = useState(false);
@@ -132,12 +154,7 @@ export default function MatchControlPage({
 
   useEffect(() => { fetchMatch(); }, [fetchMatch]);
 
-  // Refresco automático si está en curso
-  useEffect(() => {
-    if (match?.status !== "en_curso") return;
-    const interval = setInterval(fetchMatch, 15000);
-    return () => clearInterval(interval);
-  }, [match?.status, fetchMatch]);
+  // ─── Acciones del partido ────────────────────────────────────────────────
 
   const handleAction = async (action: "iniciar" | "finalizar") => {
     setActing(true);
@@ -180,43 +197,70 @@ export default function MatchControlPage({
     }
   };
 
-  const openEventForm = () => {
-    setEventTeamId(""); setEventType(""); setEventPlayerId(""); setEventMinute("");
-    setEventOpen(true);
+  // ─── Evento rápido ───────────────────────────────────────────────────────
+
+  const openQuick = (teamId: string, type: QuickEventType) => {
+    setQuickTeamId(teamId);
+    setQuickType(type);
+    setQuickPlayerId("");
+    setQuickMinute("");
+    setQuickOpen(true);
   };
 
-  const handleAddEvent = async () => {
-    if (!eventTeamId || !eventType || !eventPlayerId || eventMinute === "") {
+  const handleQuickEvent = async () => {
+    if (!quickPlayerId || quickMinute === "") {
       toast({ title: "Completa todos los campos", variant: "destructive" });
       return;
     }
-    setEventSaving(true);
+    setQuickSaving(true);
     try {
       const res = await fetch(`/api/tecnico/matches/${matchId}/events`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          teamId: eventTeamId, eventType, playerId: eventPlayerId, minute: Number(eventMinute),
+          teamId: quickTeamId,
+          eventType: quickType,
+          playerId: quickPlayerId,
+          minute: Number(quickMinute),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast({ title: `${eventLabels[eventType]} registrado` });
-      setEventOpen(false);
+      toast({ title: `${eventLabels[quickType]} registrado` });
+      setQuickOpen(false);
       await fetchMatch();
     } catch (e: unknown) {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Error", variant: "destructive" });
     } finally {
-      setEventSaving(false);
+      setQuickSaving(false);
+    }
+  };
+
+  // Anular último gol
+  const handleAnularGol = async () => {
+    if (!match) return;
+    const lastGoal = [...match.events]
+      .filter((e) => e.eventType === "gol" || e.eventType === "gol_en_contra")
+      .sort((a, b) => b.minute - a.minute)[0];
+    if (!lastGoal) {
+      toast({ title: "No hay goles para anular", variant: "destructive" });
+      return;
+    }
+    try {
+      const res = await fetch(`/api/tecnico/matches/${matchId}/events/${lastGoal.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast({ title: "Último gol anulado" });
+      await fetchMatch();
+    } catch (e: unknown) {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Error", variant: "destructive" });
     }
   };
 
   const handleDeleteEvent = async () => {
     if (!deleteEventId) return;
     try {
-      const res = await fetch(`/api/tecnico/matches/${matchId}/events/${deleteEventId}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`/api/tecnico/matches/${matchId}/events/${deleteEventId}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       toast({ title: "Evento eliminado" });
@@ -228,9 +272,10 @@ export default function MatchControlPage({
     }
   };
 
-  // Planilla del equipo seleccionado en el form
-  const selectedRoster = match
-    ? eventTeamId === match.homeTeamId ? match.homeRoster : match.awayRoster
+  // ─── Derivados ───────────────────────────────────────────────────────────
+
+  const quickRoster = match
+    ? quickTeamId === match.homeTeamId ? match.homeRoster : match.awayRoster
     : [];
 
   if (loading) {
@@ -245,184 +290,331 @@ export default function MatchControlPage({
     return <p className="text-center py-12 text-muted-foreground">Partido no encontrado.</p>;
   }
 
-  const canStart    = match.status === "programado" || match.status === "postergado";
-  const canFinalize = match.status === "en_curso";
-  const canWO       = match.status !== "finalizado";
-  const canAddEvent = match.status === "en_curso";
-  const isDone      = match.status === "finalizado";
+  const isLive     = match.status === "en_curso";
+  const isDone     = match.status === "finalizado";
+  const canStart   = match.status === "programado" || match.status === "postergado";
+  const canWO      = !isDone;
+
+  const sortedEvents = [...match.events].sort((a, b) => a.minute - b.minute);
 
   return (
-    <div className="space-y-6">
-      {/* Volver */}
-      <button
-        onClick={() => router.push("/tecnico/partidos")}
-        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" /> Mis Partidos
-      </button>
+    <div className="space-y-0">
 
-      {/* Marcador principal */}
-      <Card className={match.status === "en_curso" ? "ring-2 ring-primary/40" : ""}>
-        <CardContent className="p-6 space-y-4">
-          {/* Campeonato / fase / ronda */}
-          <div className="flex items-center justify-between">
-            <div className="text-xs text-muted-foreground space-y-0.5">
-              <p>{match.championship.name}</p>
-              {match.phase && <p>{match.phase.name}{match.roundLabel ? ` · ${match.roundLabel}` : ""}</p>}
-              {match.venue && <p>{match.venue}</p>}
-            </div>
-            <Badge className={`text-xs border-0 ${statusBadge[match.status]}`}>
-              {match.status === "en_curso" && <span className="mr-1.5 h-2 w-2 rounded-full bg-primary animate-pulse inline-block" />}
-              {statusLabel[match.status]}
-            </Badge>
-          </div>
-
-          {/* Equipos + marcador */}
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 py-2">
-            <p className="text-lg font-bold text-right leading-tight">{match.homeTeam.name}</p>
-            <div className="flex flex-col items-center gap-1">
-              <span className="font-display text-5xl tabular-nums text-foreground">
-                {match.homeScore} — {match.awayScore}
-              </span>
-              {match.status === "en_curso" && (
-                <span className="text-xs font-medium text-primary animate-pulse">EN VIVO</span>
-              )}
-            </div>
-            <p className="text-lg font-bold leading-tight">{match.awayTeam.name}</p>
-          </div>
-
-          {/* Controles del partido */}
-          {!isDone && (
-            <div className="flex flex-wrap justify-center gap-2 pt-2 border-t border-border/40">
-              {canStart && (
-                <Button onClick={() => handleAction("iniciar")} disabled={acting} className="gap-2">
-                  {acting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                  Iniciar partido
-                </Button>
-              )}
-              {canFinalize && (
-                <Button
-                  variant="outline"
-                  onClick={() => setFinalizarOpen(true)}
-                  disabled={acting}
-                  className="gap-2"
-                >
-                  <Square className="h-4 w-4" /> Finalizar partido
-                </Button>
-              )}
-              {canWO && (
-                <Button
-                  variant="outline"
-                  onClick={() => { setWoWinner(""); setWoOpen(true); }}
-                  className="gap-2 border-destructive/40 text-destructive hover:bg-destructive/10"
-                >
-                  <AlertTriangle className="h-4 w-4" /> Walkover (W.O.)
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Eventos del partido */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Eventos del partido
-          </h2>
-          {canAddEvent && (
-            <Button size="sm" onClick={openEventForm} className="gap-1.5 h-8">
-              <Plus className="h-3.5 w-3.5" /> Registrar evento
-            </Button>
-          )}
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={() => router.push("/tecnico/partidos")}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Volver
+        </button>
+        <div className="text-center">
+          <p className="text-xs font-semibold text-foreground">Gestión de Partido</p>
+          <p className="text-[11px] text-muted-foreground">
+            {match.homeTeam.name} vs {match.awayTeam.name}
+          </p>
         </div>
-
-        {match.events.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-10 text-center">
-              <p className="text-sm text-muted-foreground">Sin eventos registrados aún.</p>
-              {canAddEvent && (
-                <Button size="sm" variant="outline" onClick={openEventForm} className="mt-3 gap-1.5">
-                  <Plus className="h-3.5 w-3.5" /> Registrar primer evento
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-1.5">
-            {[...match.events].sort((a, b) => a.minute - b.minute).map((ev) => (
-              <Card key={ev.id}>
-                <CardContent className="flex items-center gap-3 px-4 py-3">
-                  <span className="text-xs font-mono text-muted-foreground w-8 shrink-0">
-                    {ev.minute}&apos;
-                  </span>
-                  <span className="text-lg shrink-0">{eventIcon[ev.eventType]}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">
-                      {[ev.player.firstName, ev.player.paternalLastName].filter(Boolean).join(" ")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {eventLabels[ev.eventType]} · {ev.team.name}
-                    </p>
-                  </div>
-                  {!isDone && (
-                    <Button
-                      variant="ghost" size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-                      onClick={() => setDeleteEventId(ev.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+        <Badge className={`text-[11px] border ${statusBadge[match.status]}`}>
+          {isLive && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse inline-block" />}
+          {statusLabel[match.status].toUpperCase()}
+        </Badge>
       </div>
 
-      {/* Dialog: registrar evento */}
-      <Dialog open={eventOpen} onOpenChange={(v) => !v && setEventOpen(false)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Registrar evento</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Tipo de evento</Label>
-              <Select value={eventType} onValueChange={setEventType}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(eventLabels).map(([v, l]) => (
-                    <SelectItem key={v} value={v}>
-                      {eventIcon[v]} {l}
-                    </SelectItem>
+      {/* ── Tabs ── */}
+      <div className="flex border-b border-border mb-4">
+        {(["control", "planilla"] as Tab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              tab === t
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t === "planilla" ? <ClipboardList className="h-3.5 w-3.5" /> : <Gamepad2 className="h-3.5 w-3.5" />}
+            {t === "planilla" ? "Planilla" : "Control"}
+          </button>
+        ))}
+      </div>
+
+      {/* ══════════════ TAB: CONTROL ══════════════ */}
+      {tab === "control" && (
+        <div className="space-y-4">
+
+          {/* Status bar */}
+          <div className={`rounded-lg px-4 py-2.5 text-center text-sm font-medium flex items-center justify-center gap-2 ${statusBarColor[match.status]}`}>
+            {isLive && <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />}
+            Estado: {statusLabel[match.status]}
+          </div>
+
+          {/* Marcador */}
+          <Card className={isLive ? "border-green-500/30 ring-1 ring-green-500/20" : ""}>
+            <CardContent className="p-5">
+              {isLive && (
+                <p className="text-center text-[11px] font-semibold text-green-500 tracking-widest mb-3 flex items-center justify-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                  EN VIVO
+                </p>
+              )}
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                {/* Local */}
+                <div className="flex items-center gap-2 justify-end">
+                  <p className="text-sm font-bold text-right leading-tight line-clamp-2">{match.homeTeam.name}</p>
+                  <TeamAvatar name={match.homeTeam.name} />
+                </div>
+
+                {/* Marcador central */}
+                <div className="flex flex-col items-center gap-0.5 px-3">
+                  <span className="font-display text-5xl font-bold tabular-nums text-foreground">
+                    {match.homeScore}
+                  </span>
+                  <span className="text-muted-foreground text-sm font-medium">vs</span>
+                  <span className="font-display text-5xl font-bold tabular-nums text-foreground">
+                    {match.awayScore}
+                  </span>
+                </div>
+
+                {/* Visitante */}
+                <div className="flex items-center gap-2 justify-start">
+                  <TeamAvatar name={match.awayTeam.name} />
+                  <p className="text-sm font-bold leading-tight line-clamp-2">{match.awayTeam.name}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Acciones */}
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">Acciones</h2>
+            <Card>
+              <CardContent className="p-4 space-y-4">
+
+                {/* Botones por equipo */}
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { team: match.homeTeam, teamId: match.homeTeamId, label: "LOCAL" },
+                    { team: match.awayTeam, teamId: match.awayTeamId, label: "VISITANTE" },
+                  ].map(({ team, teamId, label }) => (
+                    <div key={teamId} className="space-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <TeamAvatar name={team.name} />
+                        <div>
+                          <p className="text-[10px] text-muted-foreground font-medium">{label}</p>
+                          <p className="text-xs font-semibold leading-tight">{team.name}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {/* Gol */}
+                        <button
+                          disabled={!isLive}
+                          onClick={() => openQuick(teamId, "gol")}
+                          className="flex flex-col items-center gap-1 rounded-lg border border-border bg-card p-2.5 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <span className="text-xl">⚽</span>
+                          <span className="text-[10px]">Gol</span>
+                        </button>
+                        {/* Amarilla */}
+                        <button
+                          disabled={!isLive}
+                          onClick={() => openQuick(teamId, "amarilla")}
+                          className="flex flex-col items-center gap-1 rounded-lg border border-border bg-card p-2.5 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <span className="text-xl">🟨</span>
+                          <span className="text-[10px]">Amarilla</span>
+                        </button>
+                        {/* Roja */}
+                        <button
+                          disabled={!isLive}
+                          onClick={() => openQuick(teamId, "roja")}
+                          className="flex flex-col items-center gap-1 rounded-lg border border-border bg-card p-2.5 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <span className="text-xl">🟥</span>
+                          <span className="text-[10px]">Roja</span>
+                        </button>
+                      </div>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
+                </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs">Equipo</Label>
-              <Select value={eventTeamId} onValueChange={(v) => { setEventTeamId(v); setEventPlayerId(""); }}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={match.homeTeamId}>{match.homeTeam.name} (Local)</SelectItem>
-                  <SelectItem value={match.awayTeamId}>{match.awayTeam.name} (Visitante)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                {/* Fila de controles del partido */}
+                <div className="flex items-center justify-between border-t border-border pt-3 gap-2">
+                  {/* Anular gol */}
+                  <button
+                    disabled={!isLive}
+                    onClick={handleAnularGol}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Undo2 className="h-3.5 w-3.5" />
+                    Anular gol
+                  </button>
 
+                  {/* Iniciar / Finalizar */}
+                  {canStart && (
+                    <Button size="sm" onClick={() => handleAction("iniciar")} disabled={acting} className="h-8 gap-1.5">
+                      {acting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                      Iniciar
+                    </Button>
+                  )}
+                  {isLive && (
+                    <Button size="sm" variant="outline" onClick={() => setFinalizarOpen(true)} disabled={acting} className="h-8 gap-1.5">
+                      <Square className="h-3.5 w-3.5" /> Finalizar
+                    </Button>
+                  )}
+
+                  {/* Walkover */}
+                  {canWO && (
+                    <button
+                      onClick={() => { setWoWinner(""); setWoOpen(true); }}
+                      className="flex items-center gap-1.5 text-xs text-destructive/70 hover:text-destructive transition-colors"
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      W.O.
+                    </button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Eventos del partido */}
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">Eventos del Partido</h2>
+
+            {sortedEvents.length === 0 ? (
+              <Card className="border-dashed">
+                <CardContent className="py-10 text-center">
+                  <p className="text-sm text-muted-foreground">Sin eventos registrados aún.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  {/* Cabecera */}
+                  <div className="grid grid-cols-[1fr_auto_1fr] text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-4 py-2 border-b border-border">
+                    <span>{match.homeTeam.name}</span>
+                    <span className="text-center px-4">Eventos</span>
+                    <span className="text-right">{match.awayTeam.name}</span>
+                  </div>
+
+                  {/* Filas */}
+                  <div className="divide-y divide-border/50">
+                    {sortedEvents.map((ev) => {
+                      const isHome = ev.team.id === match.homeTeamId;
+                      const playerName = [ev.player.firstName, ev.player.paternalLastName].filter(Boolean).join(" ");
+                      return (
+                        <button
+                          key={ev.id}
+                          disabled={isDone}
+                          onClick={() => !isDone && setDeleteEventId(ev.id)}
+                          className="w-full grid grid-cols-[1fr_auto_1fr] items-center px-4 py-2.5 hover:bg-muted/50 transition-colors disabled:cursor-default text-left"
+                        >
+                          {/* Columna local */}
+                          <div className={isHome ? "flex flex-col" : ""}>
+                            {isHome && (
+                              <>
+                                <span className="text-xs font-medium text-foreground leading-tight">{playerName}</span>
+                                <span className="text-[10px] text-muted-foreground">{ev.minute}&apos;</span>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Icono central */}
+                          <div className="flex flex-col items-center px-3">
+                            <span className="text-base">{eventIcon[ev.eventType]}</span>
+                            {ev.eventType === "gol_en_contra" && (
+                              <span className="text-[9px] text-muted-foreground">e.c.</span>
+                            )}
+                          </div>
+
+                          {/* Columna visitante */}
+                          <div className={!isHome ? "flex flex-col items-end" : ""}>
+                            {!isHome && (
+                              <>
+                                <span className="text-xs font-medium text-foreground leading-tight text-right">{playerName}</span>
+                                <span className="text-[10px] text-muted-foreground">{ev.minute}&apos;</span>
+                              </>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════ TAB: PLANILLA ══════════════ */}
+      {tab === "planilla" && (
+        <div className="space-y-4">
+          {[
+            { label: "LOCAL", team: match.homeTeam, roster: match.homeRoster },
+            { label: "VISITANTE", team: match.awayTeam, roster: match.awayRoster },
+          ].map(({ label, team, roster }) => (
+            <div key={team.id} className="space-y-2">
+              <div className="flex items-center gap-2">
+                <TeamAvatar name={team.name} />
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-medium">{label}</p>
+                  <p className="text-sm font-semibold">{team.name}</p>
+                </div>
+              </div>
+              {roster.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="py-8 text-center">
+                    <p className="text-sm text-muted-foreground">Sin jugadores inscritos.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="divide-y divide-border/50">
+                      {roster.map((r) => (
+                        <div key={r.id} className="flex items-center gap-3 px-4 py-2.5">
+                          <span className="text-xs font-mono text-muted-foreground w-6 text-right shrink-0">
+                            #{r.number}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {[r.player.firstName, r.player.paternalLastName, r.player.maternalLastName].filter(Boolean).join(" ")}
+                            </p>
+                            {r.player.dni && (
+                              <p className="text-[10px] text-muted-foreground">{r.player.dni}</p>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground shrink-0">{r.position}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Mini-modal: registrar evento rápido ── */}
+      <Dialog open={quickOpen} onOpenChange={(v) => !v && setQuickOpen(false)}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span>{eventIcon[quickType]}</span>
+              {eventLabels[quickType]}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
             <div className="space-y-1.5">
               <Label className="text-xs">Jugador</Label>
-              <Select
-                value={eventPlayerId}
-                onValueChange={setEventPlayerId}
-                disabled={!eventTeamId}
-              >
+              <Select value={quickPlayerId} onValueChange={setQuickPlayerId}>
                 <SelectTrigger>
-                  <SelectValue placeholder={eventTeamId ? "Seleccionar jugador" : "Selecciona un equipo primero"} />
+                  <SelectValue placeholder="Seleccionar jugador" />
                 </SelectTrigger>
                 <SelectContent>
-                  {selectedRoster.map((r) => (
+                  {quickRoster.map((r) => (
                     <SelectItem key={r.player.id} value={r.player.id}>
                       #{r.number} {[r.player.firstName, r.player.paternalLastName].filter(Boolean).join(" ")}
                     </SelectItem>
@@ -430,34 +622,33 @@ export default function MatchControlPage({
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-1.5">
               <Label className="text-xs">Minuto</Label>
               <Input
                 type="number" min={1} max={200}
                 placeholder="Ej: 23"
-                value={eventMinute}
-                onChange={(e) => setEventMinute(e.target.value === "" ? "" : Number(e.target.value))}
+                value={quickMinute}
+                onChange={(e) => setQuickMinute(e.target.value === "" ? "" : Number(e.target.value))}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEventOpen(false)}>Cancelar</Button>
-            <Button onClick={handleAddEvent} disabled={eventSaving}>
-              {eventSaving && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+            <Button variant="outline" onClick={() => setQuickOpen(false)}>Cancelar</Button>
+            <Button onClick={handleQuickEvent} disabled={quickSaving}>
+              {quickSaving && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
               Registrar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: walkover */}
+      {/* ── Walkover ── */}
       <Dialog open={woOpen} onOpenChange={(v) => !v && setWoOpen(false)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Walkover (W.O.)</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
-              El equipo ganador del W.O. recibe el resultado <strong>3 — 0</strong>. Esta acción finaliza el partido.
+              El equipo ganador recibe <strong>3 — 0</strong>. Esta acción finaliza el partido.
             </p>
             <div className="space-y-1.5">
               <Label className="text-xs">¿Qué equipo gana el W.O.?</Label>
@@ -472,7 +663,7 @@ export default function MatchControlPage({
             {woWinner && (
               <div className="rounded-lg bg-muted/60 px-4 py-3 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Resultado final</p>
-                <p className="font-display text-xl">
+                <p className="font-display text-lg font-bold">
                   {woWinner === match.homeTeamId
                     ? `${match.homeTeam.name} 3 — 0 ${match.awayTeam.name}`
                     : `${match.homeTeam.name} 0 — 3 ${match.awayTeam.name}`}
@@ -494,7 +685,7 @@ export default function MatchControlPage({
         </DialogContent>
       </Dialog>
 
-      {/* Confirmar finalizar */}
+      {/* ── Confirmar finalizar ── */}
       <AlertDialog open={finalizarOpen} onOpenChange={setFinalizarOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -513,7 +704,7 @@ export default function MatchControlPage({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Confirmar eliminar evento */}
+      {/* ── Confirmar eliminar evento ── */}
       <AlertDialog open={!!deleteEventId} onOpenChange={(v) => !v && setDeleteEventId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

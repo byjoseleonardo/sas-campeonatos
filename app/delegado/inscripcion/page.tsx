@@ -149,7 +149,7 @@ export default function DelegadoInscripcionPage() {
   const handleInscribir = async (player: {
     firstName: string; paternalLastName: string; maternalLastName?: string | null;
     dni: string; number: number; position: string;
-    photoUrl: string | null; gender?: string | null;
+    photoUrl: string | null; gender?: string | null; email?: string | null;
   }) => {
     if (!team?.id) return;
     try {
@@ -165,6 +165,7 @@ export default function DelegadoInscripcionPage() {
           position: player.position,
           photoUrl: player.photoUrl ?? undefined,
           gender: player.gender ?? undefined,
+          email: player.email ?? undefined,
         }),
       });
       const data = await res.json();
@@ -212,7 +213,7 @@ export default function DelegadoInscripcionPage() {
       <div>
         <h1 className="font-display text-4xl text-foreground">INSCRIPCIÓN DE JUGADORES</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Ingresa el DNI del jugador para consultar sus datos y registrarlo en tu equipo
+          Ingresa el N° CIP del ingeniero para consultar sus datos y registrarlo en tu equipo
         </p>
       </div>
 
@@ -337,7 +338,7 @@ export default function DelegadoInscripcionPage() {
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre o cédula..."
+                placeholder="Buscar por nombre o N° CIP..."
                 className="max-w-xs"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -366,7 +367,7 @@ export default function DelegadoInscripcionPage() {
                     <TableRow>
                       <TableHead className="w-12">#</TableHead>
                       <TableHead>Jugador</TableHead>
-                      <TableHead>Cédula</TableHead>
+                      <TableHead>N° CIP</TableHead>
                       <TableHead>Posición</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>

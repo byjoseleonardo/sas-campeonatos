@@ -208,7 +208,7 @@ export default function DelegadoEquipoPage() {
                 <TableRow>
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>Jugador</TableHead>
-                  <TableHead>Cédula</TableHead>
+                  <TableHead>N° CIP</TableHead>
                   <TableHead>Posición</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>

@@ -300,6 +300,7 @@ model Player {
   gender     String?   // "M" | "F"
   photoUrl   String?
   phone      String?
+  email      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

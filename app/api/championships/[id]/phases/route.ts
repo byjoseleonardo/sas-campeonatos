@@ -57,8 +57,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const champ = await prisma.championship.findUnique({ where: { id }, select: { status: true } });
     if (!champ) return NextResponse.json({ error: "Campeonato no encontrado" }, { status: 404 });
-    if (champ.status === "en_curso" || champ.status === "finalizado") {
-      return NextResponse.json({ error: "No se puede modificar un campeonato iniciado" }, { status: 409 });
+    if (champ.status === "finalizado") {
+      return NextResponse.json({ error: "No se puede modificar un campeonato finalizado" }, { status: 409 });
     }
 
     const body = await req.json();

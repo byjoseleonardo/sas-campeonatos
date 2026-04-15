@@ -521,7 +521,7 @@ export default function FasesPage({ params }: { params: Promise<{ id: string }> 
   // Clasificados
   const [clasificadosPhase, setClasificadosPhase] = useState<Phase | null>(null);
 
-  const isLocked = champ?.status === "en_curso" || champ?.status === "finalizado";
+  const isLocked = champ?.status === "finalizado";
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -703,7 +703,7 @@ export default function FasesPage({ params }: { params: Promise<{ id: string }> 
         <div className="space-y-3">
           {sorted.map((phase, idx) => {
             const Icon = typeIcons[phase.type];
-            const canDraw = !isLocked && (phase.type === "grupos" || phase.type === "eliminacion");
+            const canDraw = !isLocked && (phase.type === "grupos" || phase.type === "eliminacion" || phase.type === "final");
             return (
               <Card key={phase.id}>
                 <CardContent className="flex items-center gap-4 p-4">
