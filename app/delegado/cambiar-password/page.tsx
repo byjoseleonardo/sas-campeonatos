@@ -6,8 +6,32 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Trophy, Eye, EyeOff, User, Mail, Phone, KeyRound } from "lucide-react";
+import { Trophy, Eye, EyeOff, User, Mail, Phone, KeyRound, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const passwordRules = [
+  { label: "Mínimo 8 caracteres",       test: (p: string) => p.length >= 8 },
+  { label: "Al menos una mayúscula",     test: (p: string) => /[A-Z]/.test(p) },
+  { label: "Al menos un número",         test: (p: string) => /[0-9]/.test(p) },
+  { label: "Al menos un carácter especial (!@#$...)", test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+];
+
+function PasswordRequirements({ password }: { password: string }) {
+  if (!password) return null;
+  return (
+    <ul className="space-y-1 mt-2">
+      {passwordRules.map((rule) => {
+        const ok = rule.test(password);
+        return (
+          <li key={rule.label} className={`flex items-center gap-1.5 text-xs ${ok ? "text-primary" : "text-muted-foreground"}`}>
+            {ok ? <Check className="h-3 w-3 shrink-0" /> : <X className="h-3 w-3 shrink-0" />}
+            {rule.label}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 export default function CambiarPasswordPage() {
   const { toast } = useToast();
@@ -38,8 +62,9 @@ export default function CambiarPasswordPage() {
       toast({ title: "Correo requerido", description: "Ingresa tu correo electrónico real.", variant: "destructive" });
       return;
     }
-    if (newPassword.length < 8) {
-      toast({ title: "Contraseña muy corta", description: "Debe tener al menos 8 caracteres.", variant: "destructive" });
+    const failedRule = passwordRules.find((r) => !r.test(newPassword));
+    if (failedRule) {
+      toast({ title: "Contraseña inválida", description: failedRule.label, variant: "destructive" });
       return;
     }
     if (newPassword !== confirm) {
@@ -201,6 +226,7 @@ export default function CambiarPasswordPage() {
                       {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  <PasswordRequirements password={newPassword} />
                 </div>
 
                 <div className="space-y-2">

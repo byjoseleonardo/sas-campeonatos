@@ -17,7 +17,8 @@ const updateSchema = z.object({
   maxInscripciones: z.number().int().min(1).optional(),
   minJugadores: z.number().int().min(1).optional(),
   maxEquipos: z.number().int().min(0).optional(),
-  tecnicoIds: z.array(z.string()).optional(),
+  tecnicoIds:    z.array(z.string()).optional(),
+  supervisorIds: z.array(z.string()).optional(),
 });
 
 // GET /api/championships/[id]
@@ -76,7 +77,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: "No tienes permiso para editar este campeonato" }, { status: 403 });
     }
 
-    const { tecnicoIds, startDate, endDate, ...fields } = data;
+    const { tecnicoIds, supervisorIds, startDate, endDate, ...fields } = data;
 
     const championship = await prisma.championship.update({
       where: { id },
@@ -100,6 +101,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (tecnicoIds.length) {
         await prisma.userRole.updateMany({
           where: { userId: { in: tecnicoIds }, role: Role.tecnico_mesa },
+          data: { championshipId: id },
+        });
+      }
+    }
+
+    // Actualizar supervisores asignados
+    if (supervisorIds !== undefined) {
+      await prisma.userRole.updateMany({
+        where: { championshipId: id, role: Role.supervisor },
+        data: { championshipId: null },
+      });
+      if (supervisorIds.length) {
+        await prisma.userRole.updateMany({
+          where: { userId: { in: supervisorIds }, role: Role.supervisor },
           data: { championshipId: id },
         });
       }

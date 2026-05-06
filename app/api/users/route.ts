@@ -8,7 +8,7 @@ import { Role } from "@/lib/generated/prisma/enums";
 const createUserSchema = z.object({
   firstName: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
   paternalLastName: z.string().min(2, "El apellido paterno debe tener al menos 2 caracteres"),
-  maternalLastName: z.string().optional(),
+  maternalLastName: z.string().nullable().optional(),
   email: z.string().email("Correo inválido"),
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
   phone: z.string().optional(),
@@ -103,8 +103,8 @@ export async function POST(req: NextRequest) {
     if (callerRole === Role.administrador && data.role !== Role.organizador) {
       return NextResponse.json({ error: "El administrador solo puede crear organizadores" }, { status: 403 });
     }
-    if (callerRole === Role.organizador && data.role !== Role.tecnico_mesa) {
-      return NextResponse.json({ error: "El organizador solo puede crear técnicos de mesa" }, { status: 403 });
+    if (callerRole === Role.organizador && data.role !== Role.tecnico_mesa && data.role !== Role.supervisor) {
+      return NextResponse.json({ error: "El organizador solo puede crear técnicos de mesa o supervisores" }, { status: 403 });
     }
 
     const existing = await prisma.user.findUnique({ where: { email: data.email } });

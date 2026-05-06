@@ -5,14 +5,15 @@ import { z } from "zod";
 import { Role } from "@/lib/generated/prisma/enums";
 
 const updateSchema = z.object({
-  homeTeamId:  z.string().optional(),
-  awayTeamId:  z.string().optional(),
-  scheduledAt: z.string().nullable().optional(),
-  venue:       z.string().nullable().optional(),
-  roundLabel:  z.string().nullable().optional(),
-  homeScore:   z.number().int().min(0).optional(),
-  awayScore:   z.number().int().min(0).optional(),
-  status:      z.enum(["programado", "en_curso", "finalizado", "suspendido", "postergado"]).optional(),
+  homeTeamId:   z.string().optional(),
+  awayTeamId:   z.string().optional(),
+  scheduledAt:  z.string().nullable().optional(),
+  venue:        z.string().nullable().optional(),
+  roundLabel:   z.string().nullable().optional(),
+  homeScore:    z.number().int().min(0).optional(),
+  awayScore:    z.number().int().min(0).optional(),
+  status:       z.enum(["programado", "en_curso", "finalizado", "suspendido", "postergado"]).optional(),
+  supervisorId: z.string().nullable().optional(),
 });
 
 async function canManage(userId: string, role: string, championshipId: string) {
@@ -47,18 +48,20 @@ export async function PATCH(
     const match = await prisma.match.update({
       where: { id: matchId },
       data: {
-        ...(data.homeTeamId  && { homeTeamId: data.homeTeamId }),
-        ...(data.awayTeamId  && { awayTeamId: data.awayTeamId }),
-        ...(data.scheduledAt !== undefined && { scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : null }),
-        ...(data.venue       !== undefined && { venue: data.venue }),
-        ...(data.roundLabel  !== undefined && { roundLabel: data.roundLabel }),
-        ...(data.homeScore   !== undefined && { homeScore: data.homeScore }),
-        ...(data.awayScore   !== undefined && { awayScore: data.awayScore }),
-        ...(data.status      && { status: data.status }),
+        ...(data.homeTeamId    && { homeTeamId: data.homeTeamId }),
+        ...(data.awayTeamId    && { awayTeamId: data.awayTeamId }),
+        ...(data.scheduledAt   !== undefined && { scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : null }),
+        ...(data.venue         !== undefined && { venue: data.venue }),
+        ...(data.roundLabel    !== undefined && { roundLabel: data.roundLabel }),
+        ...(data.homeScore     !== undefined && { homeScore: data.homeScore }),
+        ...(data.awayScore     !== undefined && { awayScore: data.awayScore }),
+        ...(data.status        && { status: data.status }),
+        ...(data.supervisorId  !== undefined && { supervisorId: data.supervisorId }),
       },
       include: {
-        homeTeam: { select: { id: true, name: true } },
-        awayTeam: { select: { id: true, name: true } },
+        homeTeam:   { select: { id: true, name: true } },
+        awayTeam:   { select: { id: true, name: true } },
+        supervisor: { select: { id: true, firstName: true, paternalLastName: true } },
       },
     });
     return NextResponse.json(match);

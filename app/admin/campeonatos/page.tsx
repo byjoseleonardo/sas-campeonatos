@@ -71,6 +71,7 @@ export type FormState = {
   maxInscripciones: number;
   minJugadores: number;
   tecnicoIds: string[];
+  supervisorIds: string[];
 };
 
 // ─── Labels y badges ─────────────────────────────────────────────────────────
@@ -123,6 +124,7 @@ export const emptyForm: FormState = {
   maxInscripciones: 0,
   minJugadores: 0,
   tecnicoIds: [],
+  supervisorIds: [],
 };
 
 // ─── ChampionshipForm (fuera del componente principal) ────────────────────────
@@ -131,15 +133,25 @@ interface ChampionshipFormProps {
   form: FormState;
   setForm: (f: FormState) => void;
   tecnicos: UserOption[];
+  supervisores: UserOption[];
 }
 
-function ChampionshipForm({ form, setForm, tecnicos }: ChampionshipFormProps) {
+function ChampionshipForm({ form, setForm, tecnicos, supervisores }: ChampionshipFormProps) {
   const toggleTecnico = (id: string) => {
     setForm({
       ...form,
       tecnicoIds: form.tecnicoIds.includes(id)
         ? form.tecnicoIds.filter((t) => t !== id)
         : [...form.tecnicoIds, id],
+    });
+  };
+
+  const toggleSupervisor = (id: string) => {
+    setForm({
+      ...form,
+      supervisorIds: form.supervisorIds.includes(id)
+        ? form.supervisorIds.filter((s) => s !== id)
+        : [...form.supervisorIds, id],
     });
   };
 
@@ -292,6 +304,27 @@ function ChampionshipForm({ form, setForm, tecnicos }: ChampionshipFormProps) {
             </div>
           </div>
         )}
+
+        {supervisores.length > 0 && (
+          <div className="space-y-2">
+            <Label>Supervisores</Label>
+            <div className="space-y-1.5 max-h-32 overflow-y-auto rounded border border-border/50 p-2">
+              {supervisores.map((u) => (
+                <label
+                  key={u.id}
+                  className="flex items-center gap-2 cursor-pointer rounded px-1 py-0.5 hover:bg-muted/50 transition-colors"
+                >
+                  <Checkbox
+                    checked={form.supervisorIds.includes(u.id)}
+                    onCheckedChange={() => toggleSupervisor(u.id)}
+                  />
+                  <span className="text-sm">{[u.firstName, u.paternalLastName, u.maternalLastName].filter(Boolean).join(" ")}</span>
+                  <span className="text-xs text-muted-foreground">{u.email}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -310,6 +343,7 @@ export default function AdminChampionshipsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [tecnicos, setTecnicos] = useState<UserOption[]>([]);
+  const [supervisores, setSupervisores] = useState<UserOption[]>([]);
   const { toast } = useToast();
   const { data: session, status: sessionStatus } = useSession();
   const isOrganizador = session?.user?.role === "organizador";
@@ -337,6 +371,9 @@ export default function AdminChampionshipsPage() {
     fetch("/api/users?role=tecnico_mesa")
       .then((r) => r.json())
       .then((d) => setTecnicos(Array.isArray(d) ? d : []));
+    fetch("/api/users?role=supervisor")
+      .then((r) => r.json())
+      .then((d) => setSupervisores(Array.isArray(d) ? d : []));
   }, []);
 
   const handleCreate = async () => {
@@ -358,7 +395,8 @@ export default function AdminChampionshipsPage() {
           matchDurationMin: Number(form.matchDurationMin),
           maxInscripciones: Number(form.maxInscripciones),
           minJugadores: Number(form.minJugadores),
-          tecnicoIds: form.tecnicoIds.length ? form.tecnicoIds : undefined,
+          tecnicoIds:    form.tecnicoIds.length ? form.tecnicoIds : undefined,
+          supervisorIds: form.supervisorIds.length ? form.supervisorIds : undefined,
         }),
       });
       const data = await res.json();
@@ -377,6 +415,7 @@ export default function AdminChampionshipsPage() {
   const openEdit = (c: Championship) => {
     setEditChamp(c);
     const tecRoles = c.userRoles.filter((r) => r.role === "tecnico_mesa");
+    const supRoles = c.userRoles.filter((r) => r.role === "supervisor");
     setForm({
       name: c.name,
       sport: c.sport,
@@ -389,6 +428,7 @@ export default function AdminChampionshipsPage() {
       minJugadores: c.minJugadores,
       maxEquipos: c.maxEquipos ?? 0,
       tecnicoIds: tecRoles.map((r) => r.user.id),
+      supervisorIds: supRoles.map((r) => r.user.id),
     });
     setEditOpen(true);
   };
@@ -405,7 +445,8 @@ export default function AdminChampionshipsPage() {
           matchDurationMin: Number(form.matchDurationMin),
           maxInscripciones: Number(form.maxInscripciones),
           minJugadores: Number(form.minJugadores),
-          tecnicoIds: form.tecnicoIds,
+          tecnicoIds:    form.tecnicoIds,
+          supervisorIds: form.supervisorIds,
         }),
       });
       const data = await res.json();
@@ -480,6 +521,7 @@ export default function AdminChampionshipsPage() {
               form={form}
               setForm={setForm}
               tecnicos={tecnicos}
+              supervisores={supervisores}
             />
             <DialogFooter>
               <DialogClose asChild>
@@ -505,6 +547,7 @@ export default function AdminChampionshipsPage() {
             form={form}
             setForm={setForm}
             tecnicos={tecnicos}
+            supervisores={supervisores}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => { setEditOpen(false); setEditChamp(null); setForm(emptyForm); }}>

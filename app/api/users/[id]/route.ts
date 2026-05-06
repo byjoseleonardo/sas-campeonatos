@@ -8,7 +8,7 @@ import { Role } from "@/lib/generated/prisma/enums";
 const updateUserSchema = z.object({
   firstName: z.string().min(2).optional(),
   paternalLastName: z.string().min(2).optional(),
-  maternalLastName: z.string().optional(),
+  maternalLastName: z.string().nullable().optional(),
   email: z.string().email().optional(),
   password: z.string().min(6).optional(),
   phone: z.string().optional(),

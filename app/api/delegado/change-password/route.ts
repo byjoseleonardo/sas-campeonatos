@@ -10,7 +10,11 @@ const schema = z.object({
   maternalLastName: z.string().optional(),
   email:           z.string().email("Correo electrónico inválido"),
   phone:           z.string().optional(),
-  newPassword:     z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  newPassword:     z.string()
+    .min(8, "La contraseña debe tener al menos 8 caracteres")
+    .regex(/[A-Z]/, "La contraseña debe tener al menos una mayúscula")
+    .regex(/[0-9]/, "La contraseña debe tener al menos un número")
+    .regex(/[^A-Za-z0-9]/, "La contraseña debe tener al menos un carácter especial"),
 });
 
 // PATCH /api/delegado/change-password

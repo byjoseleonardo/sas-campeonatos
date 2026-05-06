@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Swords, MapPin, Calendar, Tag, Users } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Swords, MapPin, Calendar, Tag, Users, Eye, Wand2, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -21,6 +21,12 @@ interface Group {
   id: string;
   name: string;
   teams: Team[];
+}
+
+interface Supervisor {
+  id: string;
+  firstName: string;
+  paternalLastName: string;
 }
 
 interface Match {
@@ -35,6 +41,8 @@ interface Match {
   status: string;
   homeScore: number;
   awayScore: number;
+  supervisorId: string | null;
+  supervisor: Supervisor | null;
 }
 
 interface Phase {
@@ -56,12 +64,13 @@ type FormState = {
   scheduledTime: string;
   venue: string;
   roundLabel: string;
+  supervisorId: string;
 };
 
 const emptyForm: FormState = {
   homeTeamId: "", awayTeamId: "",
   scheduledDate: "", scheduledTime: "",
-  venue: "", roundLabel: "",
+  venue: "", roundLabel: "", supervisorId: "",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -112,11 +121,12 @@ export default function PartidosPage({
   const router = useRouter();
   const { toast } = useToast();
 
-  const [champ, setChamp]     = useState<Championship | null>(null);
-  const [phase, setPhase]     = useState<Phase | null>(null);
-  const [allTeams, setAllTeams] = useState<Team[]>([]);
-  const [groups, setGroups]   = useState<Group[]>([]);
-  const [matches, setMatches] = useState<Match[]>([]);
+  const [champ, setChamp]         = useState<Championship | null>(null);
+  const [phase, setPhase]         = useState<Phase | null>(null);
+  const [allTeams, setAllTeams]   = useState<Team[]>([]);
+  const [groups, setGroups]       = useState<Group[]>([]);
+  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
+  const [matches, setMatches]     = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving]   = useState(false);
 
@@ -128,7 +138,74 @@ export default function PartidosPage({
   const [deleteId, setDeleteId]   = useState<string | null>(null);
   const [form, setForm]           = useState<FormState>(emptyForm);
 
-  const isLocked = champ?.status === "en_curso" || champ?.status === "finalizado";
+  // ── Generación automática de partidos ────────────────────────────────────────
+  type BulkMatch = {
+    key: string;
+    groupName: string;
+    homeTeamId: string; homeTeamName: string;
+    awayTeamId: string; awayTeamName: string;
+    scheduledDate: string; scheduledTime: string;
+    venue: string; supervisorId: string;
+  };
+  const [genOpen, setGenOpen]     = useState(false);
+  const [bulkMatches, setBulkMatches] = useState<BulkMatch[]>([]);
+  const [bulkSaving, setBulkSaving]   = useState(false);
+
+  const openGenerate = () => {
+    const preview: BulkMatch[] = [];
+    for (const g of groups) {
+      const teams = g.teams;
+      for (let i = 0; i < teams.length; i++) {
+        for (let j = i + 1; j < teams.length; j++) {
+          preview.push({
+            key: `${g.id}-${i}-${j}`,
+            groupName: g.name,
+            homeTeamId: teams[i].id, homeTeamName: teams[i].name,
+            awayTeamId: teams[j].id, awayTeamName: teams[j].name,
+            scheduledDate: "", scheduledTime: "",
+            venue: "", supervisorId: "",
+          });
+        }
+      }
+    }
+    setBulkMatches(preview);
+    setGenOpen(true);
+  };
+
+  const updateBulk = (key: string, field: keyof BulkMatch, value: string) => {
+    setBulkMatches((prev) => prev.map((m) => m.key === key ? { ...m, [field]: value } : m));
+  };
+
+  const handleConfirmGenerate = async () => {
+    setBulkSaving(true);
+    try {
+      const payload = bulkMatches.map((m) => ({
+        homeTeamId:  m.homeTeamId,
+        awayTeamId:  m.awayTeamId,
+        scheduledAt: m.scheduledDate
+          ? new Date(`${m.scheduledDate}T${m.scheduledTime || "00:00"}`).toISOString()
+          : null,
+        venue:       m.venue.trim() || null,
+        roundLabel:  m.groupName,
+        supervisorId: m.supervisorId || null,
+      }));
+      const res = await fetch(
+        `/api/championships/${id}/phases/${phaseId}/matches/bulk`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ matches: payload }) }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast({ title: "Partidos generados", description: `${data.created} partidos creados correctamente.` });
+      setGenOpen(false);
+      fetchAll();
+    } catch (e: unknown) {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "No se pudo generar", variant: "destructive" });
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
+  const isLocked = champ?.status === "finalizado";
   const isGroupPhase = phase?.type === "grupos";
 
   const fetchAll = useCallback(async () => {
@@ -139,11 +216,12 @@ export default function PartidosPage({
         fetch(`/api/championships/${id}/phases`),
         fetch(`/api/championships/${id}/teams`),
         fetch(`/api/championships/${id}/phases/${phaseId}/matches`),
+        fetch(`/api/users?role=supervisor`),
       ];
 
-      const [cRes, phRes, tRes, mRes] = await Promise.all(fetches);
-      const [cData, pData, tData, mData] = await Promise.all([
-        cRes.json(), phRes.json(), tRes.json(), mRes.json(),
+      const [cRes, phRes, tRes, mRes, sRes] = await Promise.all(fetches);
+      const [cData, pData, tData, mData, sData] = await Promise.all([
+        cRes.json(), phRes.json(), tRes.json(), mRes.json(), sRes.json(),
       ]);
 
       setChamp(cData);
@@ -152,6 +230,9 @@ export default function PartidosPage({
       setPhase(currentPhase);
       setAllTeams(Array.isArray(tData) ? tData.map((t: Team) => ({ id: t.id, name: t.name })) : []);
       setMatches(Array.isArray(mData) ? mData : []);
+      setSupervisors(Array.isArray(sData) ? sData.map((s: Supervisor & { paternalLastName: string }) => ({
+        id: s.id, firstName: s.firstName, paternalLastName: s.paternalLastName,
+      })) : []);
 
       // Si es fase de grupos, cargar grupos del campeonato
       if (currentPhase?.type === "grupos") {
@@ -201,6 +282,7 @@ export default function PartidosPage({
       scheduledTime: dt ? dt.toTimeString().slice(0, 5) : "",
       venue:         match.venue ?? "",
       roundLabel:    match.roundLabel ?? "",
+      supervisorId:  match.supervisorId ?? "",
     });
     setFormOpen(true);
   };
@@ -222,11 +304,12 @@ export default function PartidosPage({
     setSaving(true);
     try {
       const payload = {
-        homeTeamId:  form.homeTeamId,
-        awayTeamId:  form.awayTeamId,
-        scheduledAt: buildScheduledAt(),
-        venue:       form.venue.trim() || null,
-        roundLabel:  form.roundLabel.trim() || null,
+        homeTeamId:   form.homeTeamId,
+        awayTeamId:   form.awayTeamId,
+        scheduledAt:  buildScheduledAt(),
+        venue:        form.venue.trim() || null,
+        roundLabel:   form.roundLabel.trim() || null,
+        supervisorId: form.supervisorId || null,
       };
       const url = editMatch
         ? `/api/championships/${id}/phases/${phaseId}/matches/${editMatch.id}`
@@ -283,9 +366,16 @@ export default function PartidosPage({
           {phase && <p className="text-muted-foreground text-sm mt-1">{phase.name}</p>}
         </div>
         {!isLocked && (
-          <Button onClick={openCreate} className="gap-1.5">
-            <Plus className="h-4 w-4" /> Agregar partido
-          </Button>
+          <div className="flex gap-2">
+            {isGroupPhase && groups.length > 0 && matches.length === 0 && (
+              <Button variant="outline" onClick={openGenerate} className="gap-1.5">
+                <Wand2 className="h-4 w-4" /> Generar partidos
+              </Button>
+            )}
+            <Button onClick={openCreate} className="gap-1.5">
+              <Plus className="h-4 w-4" /> Agregar partido
+            </Button>
+          </div>
         )}
       </div>
 
@@ -413,6 +503,11 @@ export default function PartidosPage({
                           {match.venue && (
                             <span className="flex items-center gap-1">
                               <MapPin className="h-3 w-3" /> {match.venue}
+                            </span>
+                          )}
+                          {match.supervisor && (
+                            <span className="flex items-center gap-1">
+                              <Eye className="h-3 w-3" /> {match.supervisor.firstName} {match.supervisor.paternalLastName}
                             </span>
                           )}
                         </div>
@@ -565,6 +660,28 @@ export default function PartidosPage({
                 onChange={(e) => setForm({ ...form, venue: e.target.value })}
               />
             </div>
+
+            {/* Supervisor */}
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5 text-xs">
+                <Eye className="h-3 w-3 text-muted-foreground" /> Supervisor
+                <span className="text-muted-foreground font-normal">(opcional)</span>
+              </Label>
+              <Select
+                value={form.supervisorId || "none"}
+                onValueChange={(v) => setForm({ ...form, supervisorId: v === "none" ? "" : v })}
+              >
+                <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin asignar</SelectItem>
+                  {supervisors.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.firstName} {s.paternalLastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <DialogFooter>
@@ -572,6 +689,117 @@ export default function PartidosPage({
             <Button onClick={handleSave} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
               {editMatch ? "Guardar cambios" : "Crear partido"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog: Generar partidos automáticamente ─────────────────────────── */}
+      <Dialog open={genOpen} onOpenChange={(v) => { setGenOpen(v); }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wand2 className="h-5 w-5 text-primary" /> Generar partidos de grupo
+            </DialogTitle>
+          </DialogHeader>
+
+          <p className="text-sm text-muted-foreground px-1">
+            Se generarán todos los enfrentamientos (todos contra todos) dentro de cada grupo.
+            Configura fecha, hora y sede para cada partido antes de confirmar.
+          </p>
+
+          <div className="overflow-y-auto flex-1 space-y-6 pr-1">
+            {/* Agrupar por grupo */}
+            {Array.from(new Set(bulkMatches.map((m) => m.groupName))).map((groupName) => (
+              <div key={groupName} className="space-y-3">
+                <div className="flex items-center gap-2 border-b pb-1">
+                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{groupName}</span>
+                  <span className="text-xs text-muted-foreground">
+                    — {bulkMatches.filter((m) => m.groupName === groupName).length} partidos
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {bulkMatches.filter((m) => m.groupName === groupName).map((m) => (
+                    <div key={m.key} className="rounded-lg border border-border/60 bg-card p-3 space-y-3">
+                      {/* Equipos */}
+                      <div className="flex items-center justify-center gap-3">
+                        <span className="text-sm font-semibold flex-1 text-right">{m.homeTeamName}</span>
+                        <span className="text-xs text-muted-foreground font-medium px-2">vs</span>
+                        <span className="text-sm font-semibold flex-1">{m.awayTeamName}</span>
+                      </div>
+                      {/* Config */}
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Calendar className="h-2.5 w-2.5" /> Fecha
+                          </Label>
+                          <Input
+                            type="date"
+                            className="h-8 text-xs"
+                            value={m.scheduledDate}
+                            onChange={(e) => updateBulk(m.key, "scheduledDate", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">Hora</Label>
+                          <Input
+                            type="time"
+                            className="h-8 text-xs"
+                            value={m.scheduledTime}
+                            onChange={(e) => updateBulk(m.key, "scheduledTime", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <MapPin className="h-2.5 w-2.5" /> Sede
+                          </Label>
+                          <Input
+                            className="h-8 text-xs"
+                            placeholder="Opcional"
+                            value={m.venue}
+                            onChange={(e) => updateBulk(m.key, "venue", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Eye className="h-2.5 w-2.5" /> Supervisor
+                          </Label>
+                          <Select
+                            value={m.supervisorId || "none"}
+                            onValueChange={(v) => updateBulk(m.key, "supervisorId", v === "none" ? "" : v)}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Sin asignar" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Sin asignar</SelectItem>
+                              {supervisors.map((s) => (
+                                <SelectItem key={s.id} value={s.id}>
+                                  {s.firstName} {s.paternalLastName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter className="border-t pt-3 mt-2">
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button onClick={handleConfirmGenerate} disabled={bulkSaving} className="gap-1.5">
+              {bulkSaving
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <CheckCircle2 className="h-4 w-4" />
+              }
+              Confirmar y crear {bulkMatches.length} partidos
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -17,7 +17,8 @@ const createSchema = z.object({
   maxInscripciones: z.number().int().min(1),
   minJugadores: z.number().int().min(1),
   maxEquipos: z.number().int().min(0).default(0),
-  tecnicoIds: z.array(z.string()).optional(),
+  tecnicoIds:    z.array(z.string()).optional(),
+  supervisorIds: z.array(z.string()).optional(),
 });
 
 function generateTempPassword(): string {
@@ -143,6 +144,14 @@ export async function POST(req: NextRequest) {
     if (data.tecnicoIds?.length) {
       await prisma.userRole.updateMany({
         where: { userId: { in: data.tecnicoIds }, role: Role.tecnico_mesa },
+        data: { championshipId: championship.id },
+      });
+    }
+
+    // Asignar supervisores al campeonato
+    if (data.supervisorIds?.length) {
+      await prisma.userRole.updateMany({
+        where: { userId: { in: data.supervisorIds }, role: Role.supervisor },
         data: { championshipId: championship.id },
       });
     }
