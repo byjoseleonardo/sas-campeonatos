@@ -133,6 +133,7 @@ model User {
   // Relaciones funcionales
   supervisedChampionships Championship[] @relation("SupervisorChampionship")
   technicianMatches       Match[]        @relation("TechnicianMatch")
+  supervisedMatches       Match[]        @relation("SupervisorMatch")
   delegatedTeams          Team[]         @relation("DelegateTeam")
   recordedEvents          MatchEvent[]   @relation("EventRecordedBy")
   validatedRosters        RosterEntry[]  @relation("ValidatedBy")
@@ -397,6 +398,7 @@ model Match {
   homeTeam     Team         @relation("HomeTeam", fields: [homeTeamId], references: [id])
   awayTeam     Team         @relation("AwayTeam", fields: [awayTeamId], references: [id])
   tecnico      User?        @relation("TechnicianMatch", fields: [tecnicoId], references: [id], onDelete: SetNull)
+  supervisor   User?        @relation("SupervisorMatch", fields: [supervisorId], references: [id], onDelete: SetNull)
   nextMatch    Match?       @relation("BracketProgression", fields: [nextMatchId], references: [id])
   prevMatches  Match[]      @relation("BracketProgression")
 

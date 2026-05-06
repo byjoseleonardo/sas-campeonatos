@@ -5,11 +5,12 @@ import { z } from "zod";
 import { Role } from "@/lib/generated/prisma/enums";
 
 const matchSchema = z.object({
-  homeTeamId:  z.string().min(1, "Equipo local requerido"),
-  awayTeamId:  z.string().min(1, "Equipo visitante requerido"),
-  scheduledAt: z.string().optional().nullable(),
-  venue:       z.string().optional().nullable(),
-  roundLabel:  z.string().optional().nullable(),
+  homeTeamId:   z.string().min(1, "Equipo local requerido"),
+  awayTeamId:   z.string().min(1, "Equipo visitante requerido"),
+  scheduledAt:  z.string().optional().nullable(),
+  venue:        z.string().optional().nullable(),
+  roundLabel:   z.string().optional().nullable(),
+  supervisorId: z.string().optional().nullable(),
 });
 
 async function canManage(userId: string, role: string, championshipId: string) {
@@ -33,8 +34,9 @@ export async function GET(
     const matches = await prisma.match.findMany({
       where: { phaseId },
       include: {
-        homeTeam: { select: { id: true, name: true } },
-        awayTeam: { select: { id: true, name: true } },
+        homeTeam:   { select: { id: true, name: true } },
+        awayTeam:   { select: { id: true, name: true } },
+        supervisor: { select: { id: true, firstName: true, paternalLastName: true } },
       },
       orderBy: [{ roundLabel: "asc" }, { scheduledAt: "asc" }, { createdAt: "asc" }],
     });
@@ -70,15 +72,17 @@ export async function POST(
       data: {
         championshipId: id,
         phaseId,
-        homeTeamId:  data.homeTeamId,
-        awayTeamId:  data.awayTeamId,
-        scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : null,
-        venue:       data.venue ?? null,
-        roundLabel:  data.roundLabel ?? null,
+        homeTeamId:   data.homeTeamId,
+        awayTeamId:   data.awayTeamId,
+        scheduledAt:  data.scheduledAt ? new Date(data.scheduledAt) : null,
+        venue:        data.venue ?? null,
+        roundLabel:   data.roundLabel ?? null,
+        supervisorId: data.supervisorId ?? null,
       },
       include: {
-        homeTeam: { select: { id: true, name: true } },
-        awayTeam: { select: { id: true, name: true } },
+        homeTeam:   { select: { id: true, name: true } },
+        awayTeam:   { select: { id: true, name: true } },
+        supervisor: { select: { id: true, firstName: true, paternalLastName: true } },
       },
     });
     return NextResponse.json(match, { status: 201 });
