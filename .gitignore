@@ -52,3 +52,9 @@ next-env.d.ts
 skills-lock.json
 
 uploads
+
+# Datos sensibles de la importación CIP (PII y credenciales) — NO subir
+/backups/
+/scripts/data/
+*.xlsx
+image.png
