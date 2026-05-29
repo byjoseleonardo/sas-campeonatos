@@ -120,8 +120,8 @@ export default function LiveMatchPage({
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
               {/* Local */}
               <div className="flex flex-col items-center gap-2">
-                <TeamAvatar name={match.homeTeam.name} size="lg" />
-                <p className="text-xs font-semibold text-center leading-tight">{match.homeTeam.name}</p>
+                <TeamAvatar name={match.homeTeam?.name ?? "?"} size="lg" />
+                <p className="text-xs font-semibold text-center leading-tight">{match.homeTeam?.name ?? "Por definir"}</p>
               </div>
 
               {/* Marcador */}
@@ -137,8 +137,8 @@ export default function LiveMatchPage({
 
               {/* Visitante */}
               <div className="flex flex-col items-center gap-2">
-                <TeamAvatar name={match.awayTeam.name} size="lg" />
-                <p className="text-xs font-semibold text-center leading-tight">{match.awayTeam.name}</p>
+                <TeamAvatar name={match.awayTeam?.name ?? "?"} size="lg" />
+                <p className="text-xs font-semibold text-center leading-tight">{match.awayTeam?.name ?? "Por definir"}</p>
               </div>
             </div>
 
@@ -167,9 +167,9 @@ export default function LiveMatchPage({
               <CardContent className="p-0">
                 {/* Cabecera */}
                 <div className="grid grid-cols-[1fr_auto_1fr] text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-4 py-2 border-b border-border">
-                  <span>{match.homeTeam.name}</span>
+                  <span>{match.homeTeam?.name ?? "Por definir"}</span>
                   <span className="px-4">Eventos</span>
-                  <span className="text-right">{match.awayTeam.name}</span>
+                  <span className="text-right">{match.awayTeam?.name ?? "Por definir"}</span>
                 </div>
 
                 <div className="divide-y divide-border/50">

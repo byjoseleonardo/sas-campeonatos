@@ -113,7 +113,7 @@ export default function TecnicoPartidosPage() {
                         <div className="flex items-center gap-4">
                           {/* Equipos y marcador */}
                           <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                            <p className="text-sm font-semibold text-right leading-tight">{match.homeTeam.name}</p>
+                            <p className="text-sm font-semibold text-right leading-tight">{match.homeTeam?.name ?? "Por definir"}</p>
                             <div className="flex flex-col items-center gap-0.5">
                               {isDone || isLive ? (
                                 <span className={`font-display text-2xl tabular-nums ${isLive ? "text-primary" : ""}`}>
@@ -126,7 +126,7 @@ export default function TecnicoPartidosPage() {
                                 <span className="text-[10px] font-medium text-primary animate-pulse">EN VIVO</span>
                               )}
                             </div>
-                            <p className="text-sm font-semibold leading-tight">{match.awayTeam.name}</p>
+                            <p className="text-sm font-semibold leading-tight">{match.awayTeam?.name ?? "Por definir"}</p>
                           </div>
 
                           {/* Info */}

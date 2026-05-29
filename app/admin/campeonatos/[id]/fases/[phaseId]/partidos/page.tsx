@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Swords, MapPin, Calendar, Tag, Users, Eye, Wand2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Swords, MapPin, Calendar, Tag, Users, Eye, Wand2, CheckCircle2, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -31,14 +31,16 @@ interface Supervisor {
 
 interface Match {
   id: string;
-  homeTeamId: string;
-  awayTeamId: string;
-  homeTeam: Team;
-  awayTeam: Team;
+  homeTeamId: string | null;
+  awayTeamId: string | null;
+  homeTeam: Team | null;
+  awayTeam: Team | null;
   scheduledAt: string | null;
   venue: string | null;
   roundLabel: string | null;
   status: string;
+  round: string;
+  winnerTeamId: string | null;
   homeScore: number;
   awayScore: number;
   supervisorId: string | null;
@@ -49,12 +51,15 @@ interface Phase {
   id: string;
   name: string;
   type: string;
+  startingRound?: string | null;
+  hasThirdPlace?: boolean;
 }
 
 interface Championship {
   id: string;
   name: string;
   status: string;
+  sport: string;
 }
 
 type FormState = {
@@ -205,8 +210,91 @@ export default function PartidosPage({
     }
   };
 
+  // ── Generación de llave (bracket de 4 equipos, solo fútbol) ──────────────────
+  const [bracketOpen, setBracketOpen]     = useState(false);
+  const [bracketSaving, setBracketSaving] = useState(false);
+  const [bracketSemis, setBracketSemis]   = useState({ s1home: "", s1away: "", s2home: "", s2away: "" });
+
+  const openBracket = () => {
+    setBracketSemis({ s1home: "", s1away: "", s2home: "", s2away: "" });
+    setBracketOpen(true);
+  };
+
+  const handleGenerateBracket = async () => {
+    // Los equipos son opcionales: la llave puede crearse vacía para el sorteo presencial
+    const picks = [bracketSemis.s1home, bracketSemis.s1away, bracketSemis.s2home, bracketSemis.s2away].filter(Boolean);
+    if (new Set(picks).size !== picks.length) {
+      toast({ title: "No repitas un equipo en la llave", variant: "destructive" });
+      return;
+    }
+    setBracketSaving(true);
+    try {
+      const res = await fetch(`/api/championships/${id}/phases/${phaseId}/bracket`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          semifinals: [
+            { homeTeamId: bracketSemis.s1home || null, awayTeamId: bracketSemis.s1away || null },
+            { homeTeamId: bracketSemis.s2home || null, awayTeamId: bracketSemis.s2away || null },
+          ],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast({ title: "Llave generada", description: "Se crearon semifinales, final y tercer puesto." });
+      setBracketOpen(false);
+      fetchAll();
+    } catch (e: unknown) {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "No se pudo generar la llave", variant: "destructive" });
+    } finally {
+      setBracketSaving(false);
+    }
+  };
+
+  // ── Corregir resultado de partido de llave ──────────────────────────────────
+  const [correctMatch, setCorrectMatch]   = useState<Match | null>(null);
+  const [correctForm, setCorrectForm]     = useState({ homeScore: 0, awayScore: 0, winnerId: "" });
+  const [correctSaving, setCorrectSaving] = useState(false);
+
+  const openCorrect = (match: Match) => {
+    setCorrectMatch(match);
+    setCorrectForm({ homeScore: match.homeScore, awayScore: match.awayScore, winnerId: match.winnerTeamId ?? "" });
+  };
+
+  const handleCorrect = async () => {
+    if (!correctMatch) return;
+    const tie = correctForm.homeScore === correctForm.awayScore;
+    if (tie && !correctForm.winnerId) {
+      toast({ title: "Empate: elige el ganador (penales)", variant: "destructive" });
+      return;
+    }
+    setCorrectSaving(true);
+    try {
+      const res = await fetch(`/api/championships/${id}/phases/${phaseId}/matches/${correctMatch.id}/result`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          homeScore: correctForm.homeScore,
+          awayScore: correctForm.awayScore,
+          ...(tie ? { winnerTeamId: correctForm.winnerId } : {}),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast({ title: "Resultado corregido", description: "La llave se actualizó automáticamente." });
+      setCorrectMatch(null);
+      fetchAll();
+    } catch (e: unknown) {
+      toast({ title: "Error", description: e instanceof Error ? e.message : "No se pudo corregir", variant: "destructive" });
+    } finally {
+      setCorrectSaving(false);
+    }
+  };
+
   const isLocked = champ?.status === "finalizado";
   const isGroupPhase = phase?.type === "grupos";
+  const canBracket =
+    !!champ && ["futbol", "futsal"].includes(champ.sport) && phase?.type === "eliminacion";
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -258,7 +346,7 @@ export default function PartidosPage({
         const groupTeamIds = new Set(
           groups.find((g) => g.id === selectedGroup)?.teams.map((t) => t.id) ?? []
         );
-        return groupTeamIds.has(m.homeTeamId) && groupTeamIds.has(m.awayTeamId);
+        return !!m.homeTeamId && !!m.awayTeamId && groupTeamIds.has(m.homeTeamId) && groupTeamIds.has(m.awayTeamId);
       })
     : matches;
 
@@ -276,8 +364,8 @@ export default function PartidosPage({
     setEditMatch(match);
     const dt = match.scheduledAt ? new Date(match.scheduledAt) : null;
     setForm({
-      homeTeamId:    match.homeTeamId,
-      awayTeamId:    match.awayTeamId,
+      homeTeamId:    match.homeTeamId ?? "",
+      awayTeamId:    match.awayTeamId ?? "",
       scheduledDate: dt ? dt.toISOString().slice(0, 10) : "",
       scheduledTime: dt ? dt.toTimeString().slice(0, 5) : "",
       venue:         match.venue ?? "",
@@ -372,6 +460,11 @@ export default function PartidosPage({
                 <Wand2 className="h-4 w-4" /> Generar partidos
               </Button>
             )}
+            {canBracket && (
+              <Button variant="outline" onClick={openBracket} className="gap-1.5">
+                <Swords className="h-4 w-4" /> Generar llave
+              </Button>
+            )}
             <Button onClick={openCreate} className="gap-1.5">
               <Plus className="h-4 w-4" /> Agregar partido
             </Button>
@@ -400,7 +493,7 @@ export default function PartidosPage({
             {groups.map((g) => {
               const count = matches.filter((m) => {
                 const ids = new Set(g.teams.map((t) => t.id));
-                return ids.has(m.homeTeamId) && ids.has(m.awayTeamId);
+                return !!m.homeTeamId && !!m.awayTeamId && ids.has(m.homeTeamId) && ids.has(m.awayTeamId);
               }).length;
               return (
                 <button
@@ -481,7 +574,9 @@ export default function PartidosPage({
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                          <p className="text-sm font-medium text-right">{match.homeTeam.name}</p>
+                          <p className={`text-sm font-medium text-right ${match.homeTeam ? "" : "text-muted-foreground italic"}`}>
+                            {match.homeTeam?.name ?? "Por definir"}
+                          </p>
                           <div className="flex items-center gap-1.5">
                             {isDone ? (
                               <span className="font-display text-xl tabular-nums">
@@ -491,7 +586,9 @@ export default function PartidosPage({
                               <span className="text-muted-foreground text-sm font-medium">vs</span>
                             )}
                           </div>
-                          <p className="text-sm font-medium">{match.awayTeam.name}</p>
+                          <p className={`text-sm font-medium ${match.awayTeam ? "" : "text-muted-foreground italic"}`}>
+                            {match.awayTeam?.name ?? "Por definir"}
+                          </p>
                         </div>
 
                         <div className="hidden sm:flex flex-col gap-0.5 items-end text-xs text-muted-foreground shrink-0 min-w-[120px]">
@@ -517,6 +614,18 @@ export default function PartidosPage({
                         </Badge>
 
                         <div className="flex gap-1 shrink-0">
+                          {/* Corregir resultado: partidos de llave ya finalizados */}
+                          {!isLocked && match.status === "finalizado" &&
+                            ["semifinal", "final", "tercer_puesto"].includes(match.round) && (
+                            <Button
+                              variant="ghost" size="icon"
+                              className="h-8 w-8 text-amber-600 hover:text-amber-700"
+                              title="Corregir resultado"
+                              onClick={() => openCorrect(match)}
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(match)}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -800,6 +909,150 @@ export default function PartidosPage({
                 : <CheckCircle2 className="h-4 w-4" />
               }
               Confirmar y crear {bulkMatches.length} partidos
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog: Generar llave (bracket de 4) ─────────────────────────────── */}
+      <Dialog open={bracketOpen} onOpenChange={setBracketOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Swords className="h-5 w-5 text-primary" /> Generar llave de 4 equipos
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Crea la estructura de la llave. Puedes dejar los cruces <strong>sin asignar</strong> y completarlos
+            durante el sorteo presencial (editando cada semifinal). La final y el tercer puesto se crean
+            automáticamente: los ganadores avanzan a la final y los perdedores al tercer puesto.
+          </p>
+
+          {matches.length > 0 && (
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-700">
+              Esta fase ya tiene partidos. Generar la llave los reemplazará.
+            </div>
+          )}
+
+          <div className="space-y-4 py-1">
+            {([
+              { label: "Semifinal 1", home: "s1home", away: "s1away" },
+              { label: "Semifinal 2", home: "s2home", away: "s2away" },
+            ] as const).map((semi) => (
+              <div key={semi.label} className="space-y-2 rounded-lg border border-border/60 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{semi.label}</p>
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                  <Select
+                    value={bracketSemis[semi.home] || "none"}
+                    onValueChange={(v) => setBracketSemis((p) => ({ ...p, [semi.home]: v === "none" ? "" : v }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin asignar</SelectItem>
+                      {allTeams.map((t) => (
+                        <SelectItem
+                          key={t.id}
+                          value={t.id}
+                          disabled={Object.values(bracketSemis).includes(t.id) && bracketSemis[semi.home] !== t.id}
+                        >
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs font-medium text-muted-foreground">vs</span>
+                  <Select
+                    value={bracketSemis[semi.away] || "none"}
+                    onValueChange={(v) => setBracketSemis((p) => ({ ...p, [semi.away]: v === "none" ? "" : v }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin asignar</SelectItem>
+                      {allTeams.map((t) => (
+                        <SelectItem
+                          key={t.id}
+                          value={t.id}
+                          disabled={Object.values(bracketSemis).includes(t.id) && bracketSemis[semi.away] !== t.id}
+                        >
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+            <Button onClick={handleGenerateBracket} disabled={bracketSaving} className="gap-1.5">
+              {bracketSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Swords className="h-4 w-4" />}
+              Generar llave
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog: Corregir resultado de partido de llave ───────────────────── */}
+      <Dialog open={!!correctMatch} onOpenChange={(v) => !v && setCorrectMatch(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-amber-600" /> Corregir resultado
+            </DialogTitle>
+          </DialogHeader>
+          {correctMatch && (
+            <div className="space-y-4 py-1">
+              <p className="text-sm text-muted-foreground">
+                Ajusta el marcador de <strong>{correctMatch.homeTeam?.name ?? "?"}</strong> vs{" "}
+                <strong>{correctMatch.awayTeam?.name ?? "?"}</strong>. Si es semifinal, la final y el
+                tercer puesto se recalculan (y se reinician si ya se jugaron con el equipo equivocado).
+              </p>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-right block">{correctMatch.homeTeam?.name ?? "Local"}</Label>
+                  <Input
+                    type="number" min={0}
+                    value={correctForm.homeScore}
+                    onChange={(e) => setCorrectForm((f) => ({ ...f, homeScore: Number(e.target.value) || 0 }))}
+                  />
+                </div>
+                <span className="pb-2 text-muted-foreground">—</span>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">{correctMatch.awayTeam?.name ?? "Visitante"}</Label>
+                  <Input
+                    type="number" min={0}
+                    value={correctForm.awayScore}
+                    onChange={(e) => setCorrectForm((f) => ({ ...f, awayScore: Number(e.target.value) || 0 }))}
+                  />
+                </div>
+              </div>
+
+              {/* Empate → elegir ganador (penales) */}
+              {correctForm.homeScore === correctForm.awayScore && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Ganador (definición por penales)</Label>
+                  <Select value={correctForm.winnerId} onValueChange={(v) => setCorrectForm((f) => ({ ...f, winnerId: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar ganador" /></SelectTrigger>
+                    <SelectContent>
+                      {correctMatch.homeTeamId && (
+                        <SelectItem value={correctMatch.homeTeamId}>{correctMatch.homeTeam?.name}</SelectItem>
+                      )}
+                      {correctMatch.awayTeamId && (
+                        <SelectItem value={correctMatch.awayTeamId}>{correctMatch.awayTeam?.name}</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCorrectMatch(null)}>Cancelar</Button>
+            <Button onClick={handleCorrect} disabled={correctSaving} className="gap-1.5">
+              {correctSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              Guardar corrección
             </Button>
           </DialogFooter>
         </DialogContent>

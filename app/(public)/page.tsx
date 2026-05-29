@@ -170,7 +170,7 @@ export default async function Home() {
 
                       <div className="flex items-center justify-between gap-2">
                         <p className={`flex-1 font-semibold text-sm truncate ${isDone && m.homeScore > m.awayScore ? "text-primary" : "text-card-foreground"}`}>
-                          {m.homeTeam.name}
+                          {m.homeTeam?.name ?? "Por definir"}
                         </p>
                         <div className="mx-3 flex items-center gap-1.5 font-display text-2xl text-card-foreground shrink-0">
                           <span>{isDone || isLive ? m.homeScore : "—"}</span>
@@ -178,7 +178,7 @@ export default async function Home() {
                           <span>{isDone || isLive ? m.awayScore : "—"}</span>
                         </div>
                         <p className={`flex-1 font-semibold text-sm text-right truncate ${isDone && m.awayScore > m.homeScore ? "text-primary" : "text-card-foreground"}`}>
-                          {m.awayTeam.name}
+                          {m.awayTeam?.name ?? "Por definir"}
                         </p>
                       </div>
 

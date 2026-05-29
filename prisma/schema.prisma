@@ -53,6 +53,7 @@ enum Sport {
   futsal
   baloncesto
   voleibol
+  ajedrez
 }
 
 enum TeamStatus {
@@ -361,8 +362,8 @@ model Match {
   championshipId String
   jordanaId      String?
   groupId        String?
-  homeTeamId     String
-  awayTeamId     String
+  homeTeamId     String?
+  awayTeamId     String?
   venue          String?
   scheduledAt    DateTime?
   status         MatchStatus @default(programado)
@@ -371,6 +372,9 @@ model Match {
   // Resultado
   homeScore Int @default(0)
   awayScore Int @default(0)
+
+  // Ganador resuelto (necesario para empates definidos por penales)
+  winnerTeamId String?
 
   // Control en vivo
   startedAt      DateTime?
@@ -385,8 +389,11 @@ model Match {
   tecnicoId     String?
   supervisorId  String?
 
-  // Bracket: ganador avanza a este partido
-  nextMatchId   String?
+  // Bracket: ganador avanza a este partido; perdedor al de tercer puesto
+  nextMatchId        String?
+  loserNextMatchId   String?
+  nextMatchSlot      String?   // "home" | "away" — slot que llena el GANADOR en nextMatch
+  loserNextMatchSlot String?   // "home" | "away" — slot que llena el PERDEDOR en loserNextMatch
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -395,12 +402,14 @@ model Match {
   phase        Phase?       @relation(fields: [phaseId], references: [id], onDelete: SetNull)
   jornada      Jornada?     @relation(fields: [jordanaId], references: [id], onDelete: SetNull)
   group        Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  homeTeam     Team         @relation("HomeTeam", fields: [homeTeamId], references: [id])
-  awayTeam     Team         @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  homeTeam     Team?        @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam     Team?        @relation("AwayTeam", fields: [awayTeamId], references: [id])
   tecnico      User?        @relation("TechnicianMatch", fields: [tecnicoId], references: [id], onDelete: SetNull)
   supervisor   User?        @relation("SupervisorMatch", fields: [supervisorId], references: [id], onDelete: SetNull)
-  nextMatch    Match?       @relation("BracketProgression", fields: [nextMatchId], references: [id])
-  prevMatches  Match[]      @relation("BracketProgression")
+  nextMatch        Match?   @relation("BracketProgression", fields: [nextMatchId], references: [id])
+  prevMatches      Match[]  @relation("BracketProgression")
+  loserNextMatch   Match?   @relation("LoserBracketProgression", fields: [loserNextMatchId], references: [id])
+  loserPrevMatches Match[]  @relation("LoserBracketProgression")
 
   events MatchEvent[]
 

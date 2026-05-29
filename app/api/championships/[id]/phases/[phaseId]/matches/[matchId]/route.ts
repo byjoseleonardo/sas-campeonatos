@@ -45,6 +45,35 @@ export async function PATCH(
       return NextResponse.json({ error: "Los equipos no pueden ser iguales" }, { status: 400 });
     }
 
+    // Estado actual del partido (para validaciones de llave)
+    const current = await prisma.match.findUnique({
+      where: { id: matchId },
+      select: { round: true, phaseId: true, homeTeamId: true, awayTeamId: true },
+    });
+    if (!current) return NextResponse.json({ error: "Partido no encontrado" }, { status: 404 });
+
+    // ── Validación de llave: un equipo no puede estar en ambas semifinales ──
+    if (current.round === "semifinal" && current.phaseId && (data.homeTeamId || data.awayTeamId)) {
+      const newHome = data.homeTeamId ?? current.homeTeamId;
+      const newAway = data.awayTeamId ?? current.awayTeamId;
+
+      const siblings = await prisma.match.findMany({
+        where: { phaseId: current.phaseId, round: "semifinal", id: { not: matchId } },
+        select: { homeTeamId: true, awayTeamId: true },
+      });
+      const usedElsewhere = new Set(
+        siblings.flatMap((s) => [s.homeTeamId, s.awayTeamId]).filter((x): x is string => !!x)
+      );
+
+      const conflict = [newHome, newAway].find((t) => t && usedElsewhere.has(t));
+      if (conflict) {
+        return NextResponse.json(
+          { error: "Ese equipo ya está asignado en la otra semifinal" },
+          { status: 409 }
+        );
+      }
+    }
+
     const match = await prisma.match.update({
       where: { id: matchId },
       data: {
