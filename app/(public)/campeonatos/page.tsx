@@ -73,8 +73,8 @@ export default function ChampionshipsPage() {
 
   return (
     <div className="container py-12">
-      <h1 className="font-display text-5xl text-foreground">CAMPEONATOS</h1>
-      <p className="mt-2 text-muted-foreground">Explora todos los torneos disponibles</p>
+      <h1 className="font-display text-5xl text-foreground">DISCIPLINAS</h1>
+      <p className="mt-2 text-muted-foreground">Explora todas las disciplinas de la olimpiada</p>
 
       {/* Filtros */}
       <div className="mt-8 flex flex-wrap gap-2">

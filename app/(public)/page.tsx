@@ -25,7 +25,7 @@ const matchStatusBadge: Record<string, string> = {
 };
 
 const sportLabel: Record<string, string> = {
-  futbol: "Fútbol", futsal: "Futsal", baloncesto: "Baloncesto", voleibol: "Voleibol",
+  futbol: "Fútbol", futsal: "Futsal", baloncesto: "Baloncesto", voleibol: "Voleibol", ajedrez: "Ajedrez",
 };
 
 function formatDate(iso: Date | null) {

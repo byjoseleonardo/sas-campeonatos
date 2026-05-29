@@ -55,6 +55,7 @@ interface Match {
   awayScore: number;
   scheduledAt: string | null;
   venue: string | null;
+  round: string;
   roundLabel: string | null;
   homeTeam: { id: string; name: string; shieldUrl: string | null } | null;
   awayTeam: { id: string; name: string; shieldUrl: string | null } | null;
@@ -239,14 +240,33 @@ export default function ChampionshipDetailPage({
   // Fusionar el estado en vivo (marcador/estado/equipos) sobre la carga inicial
   const matches: Match[] = data.matches.map((m) => (patches[m.id] ? { ...m, ...patches[m.id] } : m));
 
-  // Agrupar partidos por fase → jornada/grupo
-  const grouped: Record<string, { label: string; matches: Match[] }> = {};
+  // Etiquetas y orden de las fases de eliminación
+  const ROUND_LABEL: Record<string, string> = {
+    dieciseisavos: "Dieciseisavos",
+    octavos: "Octavos de final",
+    cuartos: "Cuartos de final",
+    semifinal: "Semifinales",
+    tercer_puesto: "Tercer puesto",
+    final: "Final",
+  };
+  const ROUND_ORDER: Record<string, number> = {
+    dieciseisavos: 1, octavos: 2, cuartos: 3, semifinal: 4, tercer_puesto: 5, final: 6,
+  };
+
+  // Agrupar: si es fase de eliminación, por ronda (Semifinales/3er puesto/Final);
+  // si no, por fase → jornada/grupo.
+  const grouped: Record<string, { label: string; order: number; matches: Match[] }> = {};
 
   for (const m of matches) {
     let key = "sin-fase";
     let label = "Partidos";
+    let order = 100;
 
-    if (m.phase) {
+    if (m.round && ROUND_LABEL[m.round]) {
+      key = `round-${m.round}`;
+      label = ROUND_LABEL[m.round];
+      order = ROUND_ORDER[m.round];
+    } else if (m.phase) {
       key = m.phase.id;
       label = m.phase.name;
       if (m.jornada) {
@@ -264,9 +284,11 @@ export default function ChampionshipDetailPage({
       label = m.roundLabel;
     }
 
-    if (!grouped[key]) grouped[key] = { label, matches: [] };
+    if (!grouped[key]) grouped[key] = { label, order, matches: [] };
     grouped[key].matches.push(m);
   }
+
+  const groupedEntries = Object.entries(grouped).sort((a, b) => a[1].order - b[1].order);
 
   return (
     <div className="container py-8">
@@ -338,8 +360,8 @@ export default function ChampionshipDetailPage({
 
         {/* ── Equipos ── */}
         <section className="space-y-3">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
-            <Users className="h-4 w-4" /> Equipos ({teams.length})
+          <h2 className="flex items-center gap-2.5 text-2xl font-bold text-foreground uppercase tracking-wide border-b pb-2">
+            <Users className="h-6 w-6 text-primary" /> Equipos ({teams.length})
           </h2>
           {teams.length === 0 ? (
             <Card className="border-dashed">
@@ -381,8 +403,8 @@ export default function ChampionshipDetailPage({
 
         {/* ── Fixture ── */}
         <section className="space-y-3">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
-            <Swords className="h-4 w-4" /> Fixture
+          <h2 className="flex items-center gap-2.5 text-2xl font-bold text-foreground uppercase tracking-wide border-b pb-2">
+            <Swords className="h-6 w-6 text-primary" /> Fixture
             {connected && (
               <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-green-600 normal-case tracking-normal">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" /> En vivo
@@ -399,9 +421,10 @@ export default function ChampionshipDetailPage({
           ) : (
             // Grupos/rondas en una misma línea (grid responsive: se acomodan en móvil)
             <div className="grid items-start gap-6 grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
-              {Object.entries(grouped).map(([key, { label, matches: groupMatches }]) => (
+              {groupedEntries.map(([key, { label, matches: groupMatches }]) => (
                 <div key={key} className="space-y-3">
-                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide border-b pb-2">
+                  <h3 className="flex items-center gap-2 text-lg font-bold text-foreground uppercase tracking-wide border-b-2 border-primary/40 pb-2">
+                    <span className="h-5 w-1.5 rounded-full bg-primary" />
                     {label}
                   </h3>
                   <div className="space-y-2">
