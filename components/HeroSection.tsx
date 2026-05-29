@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 
 const HeroSection = () => {
   return (
-    <section className="relative overflow-hidden bg-hero">
+    <section className="relative flex min-h-[720px] items-center overflow-hidden bg-hero">
       {/* Background image */}
       <div className="absolute inset-0">
         <img
@@ -15,7 +15,7 @@ const HeroSection = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-secondary/95 via-secondary/80 to-transparent" />
       </div>
 
-      <div className="container relative z-10 py-24 md:py-36">
+      <div className="container relative z-10 w-full py-16">
         <div className="max-w-2xl">
           <p className="animate-fade-in-up text-xs font-semibold uppercase tracking-widest text-primary">
             Colegio de Ingenieros del Perú · Consejo Nacional
