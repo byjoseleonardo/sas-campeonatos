@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Clock, Swords } from "lucide-react";
+import { useLiveMatches } from "@/hooks/use-live-matches";
 
 interface Match {
   id: string;
@@ -14,8 +15,8 @@ interface Match {
   scheduledAt: string | null;
   venue: string | null;
   roundLabel: string | null;
-  homeTeam: { id: string; name: string };
-  awayTeam: { id: string; name: string };
+  homeTeam: { id: string; name: string } | null;
+  awayTeam: { id: string; name: string } | null;
   championship: { id: string; name: string };
   phase: { id: string; name: string } | null;
 }
@@ -66,9 +67,13 @@ export default function MatchesPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Marcadores en vivo por WebSocket (scores-backend): se suscribe a cada campeonato presente
+  const { patches, connected } = useLiveMatches(matches.map((m) => m.championship.id));
+  const liveMatches: Match[] = matches.map((m) => (patches[m.id] ? { ...m, ...patches[m.id] } : m));
+
   const filtered = filter === "todos"
-    ? matches
-    : matches.filter((m) => m.status === filter);
+    ? liveMatches
+    : liveMatches.filter((m) => m.status === filter);
 
   // Agrupar por campeonato
   const byChamp: Record<string, { champName: string; matches: Match[] }> = {};
@@ -80,7 +85,14 @@ export default function MatchesPage() {
 
   return (
     <div className="container py-12">
-      <h1 className="font-display text-5xl text-foreground">PARTIDOS</h1>
+      <div className="flex items-center gap-3">
+        <h1 className="font-display text-5xl text-foreground">PARTIDOS</h1>
+        {connected && (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-600">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" /> En vivo
+          </span>
+        )}
+      </div>
       <p className="mt-2 text-muted-foreground">Calendario y resultados de los encuentros</p>
 
       {/* Filtros */}
@@ -142,7 +154,7 @@ export default function MatchesPage() {
                           {/* Equipos y marcador */}
                           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                             <p className={`text-sm font-semibold text-right leading-tight truncate ${isDone && m.homeScore > m.awayScore ? "text-primary" : ""}`}>
-                              {m.homeTeam.name}
+                              {m.homeTeam?.name ?? "Por definir"}
                             </p>
                             <div className="flex flex-col items-center px-2">
                               {isDone || isLive ? (
@@ -154,7 +166,7 @@ export default function MatchesPage() {
                               )}
                             </div>
                             <p className={`text-sm font-semibold leading-tight truncate ${isDone && m.awayScore > m.homeScore ? "text-primary" : ""}`}>
-                              {m.awayTeam.name}
+                              {m.awayTeam?.name ?? "Por definir"}
                             </p>
                           </div>
 

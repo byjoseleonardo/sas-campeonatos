@@ -46,6 +46,9 @@ next-env.d.ts
 /game-ace-manager/
 /lib/generated/prisma
 
+# Mini-backend de scores: proyecto/repo independiente (no se versiona aquí)
+/scores-backend/
+
 # Editor / agent tool directories
 .agents/
 .trae/
@@ -58,3 +61,6 @@ uploads
 /scripts/data/
 *.xlsx
 image.png
+
+# Bitácora/documentación local — no va al repo
+/docs/

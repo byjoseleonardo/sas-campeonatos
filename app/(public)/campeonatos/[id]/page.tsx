@@ -4,11 +4,11 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, ArrowLeft, MapPin, Calendar, Users, Trophy, Swords, ShieldCheck, ChevronRight } from "lucide-react";
+import { useLiveMatches } from "@/hooks/use-live-matches";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -56,8 +56,8 @@ interface Match {
   scheduledAt: string | null;
   venue: string | null;
   roundLabel: string | null;
-  homeTeam: { id: string; name: string; shieldUrl: string | null };
-  awayTeam: { id: string; name: string; shieldUrl: string | null };
+  homeTeam: { id: string; name: string; shieldUrl: string | null } | null;
+  awayTeam: { id: string; name: string; shieldUrl: string | null } | null;
   phase: { id: string; name: string } | null;
   jornada: { id: string; number: number; name: string | null } | null;
   group: { id: string; name: string } | null;
@@ -149,7 +149,7 @@ function MatchRow({ match }: { match: Match }) {
       <Card className={`hover:shadow-md transition-shadow cursor-pointer ${isLive ? "ring-2 ring-primary/30" : ""}`}>
         <CardContent className="p-3">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-            <p className="text-sm font-semibold text-right leading-tight truncate">{match.homeTeam.name}</p>
+            <p className="text-sm font-semibold text-right leading-tight truncate">{match.homeTeam?.name ?? "Por definir"}</p>
             <div className="flex flex-col items-center gap-0.5 px-2">
               {isDone || isLive ? (
                 <span className={`font-display text-xl tabular-nums font-bold ${isLive ? "text-primary" : ""}`}>
@@ -160,7 +160,7 @@ function MatchRow({ match }: { match: Match }) {
               )}
               {isLive && <span className="text-[10px] text-primary animate-pulse font-medium">EN VIVO</span>}
             </div>
-            <p className="text-sm font-semibold leading-tight truncate">{match.awayTeam.name}</p>
+            <p className="text-sm font-semibold leading-tight truncate">{match.awayTeam?.name ?? "Por definir"}</p>
           </div>
           <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
             <span>{dt ? `${dt.date} ${dt.time}` : "Sin fecha"}</span>
@@ -212,6 +212,9 @@ export default function ChampionshipDetailPage({
       .finally(() => setLoading(false));
   }, [id]);
 
+  // Marcadores en vivo por WebSocket (scores-backend); carga inicial vía REST arriba
+  const { patches, connected } = useLiveMatches(data?.championship ? [data.championship.id] : []);
+
   if (loading) {
     return (
       <div className="container flex justify-center py-24">
@@ -231,7 +234,10 @@ export default function ChampionshipDetailPage({
     );
   }
 
-  const { championship, teams, phases, matches } = data;
+  const { championship, teams } = data;
+
+  // Fusionar el estado en vivo (marcador/estado/equipos) sobre la carga inicial
+  const matches: Match[] = data.matches.map((m) => (patches[m.id] ? { ...m, ...patches[m.id] } : m));
 
   // Agrupar partidos por fase → jornada/grupo
   const grouped: Record<string, { label: string; matches: Match[] }> = {};
@@ -327,49 +333,23 @@ export default function ChampionshipDetailPage({
         )}
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="fixture" className="mt-8">
-        <TabsList className="w-full justify-start bg-muted/60">
-          <TabsTrigger value="fixture">Fixture</TabsTrigger>
-          <TabsTrigger value="equipos">Equipos ({teams.length})</TabsTrigger>
-        </TabsList>
+      {/* Vista unificada: Equipos arriba, Fixture abajo */}
+      <div className="mt-8 space-y-10">
 
-        {/* Fixture */}
-        <TabsContent value="fixture" className="mt-4">
-          {matches.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
-                <Swords className="h-10 w-10 text-muted-foreground/30" />
-                <p className="font-medium">Sin partidos programados aún</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-8">
-              {Object.entries(grouped).map(([key, { label, matches: groupMatches }]) => (
-                <div key={key} className="space-y-3">
-                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
-                    {label}
-                  </h2>
-                  <div className="space-y-2">
-                    {groupMatches.map((m) => <MatchRow key={m.id} match={m} />)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Equipos */}
-        <TabsContent value="equipos" className="mt-4">
+        {/* ── Equipos ── */}
+        <section className="space-y-3">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
+            <Users className="h-4 w-4" /> Equipos ({teams.length})
+          </h2>
           {teams.length === 0 ? (
             <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+              <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
                 <Users className="h-10 w-10 text-muted-foreground/30" />
                 <p className="font-medium">Sin equipos inscritos aún</p>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {teams.map((t) => (
                 <Card
                   key={t.id}
@@ -378,6 +358,7 @@ export default function ChampionshipDetailPage({
                 >
                   <CardContent className="flex items-center gap-3 p-4">
                     {t.shieldUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={t.shieldUrl} alt={t.name} className="h-10 w-10 rounded-full object-cover shrink-0 ring-1 ring-border" />
                     ) : (
                       <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/15 ring-1 ring-primary/25 shrink-0">
@@ -396,8 +377,42 @@ export default function ChampionshipDetailPage({
               ))}
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </section>
+
+        {/* ── Fixture ── */}
+        <section className="space-y-3">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
+            <Swords className="h-4 w-4" /> Fixture
+            {connected && (
+              <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-green-600 normal-case tracking-normal">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" /> En vivo
+              </span>
+            )}
+          </h2>
+          {matches.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+                <Swords className="h-10 w-10 text-muted-foreground/30" />
+                <p className="font-medium">Sin partidos programados aún</p>
+              </CardContent>
+            </Card>
+          ) : (
+            // Grupos/rondas en una misma línea (grid responsive: se acomodan en móvil)
+            <div className="grid items-start gap-6 grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
+              {Object.entries(grouped).map(([key, { label, matches: groupMatches }]) => (
+                <div key={key} className="space-y-3">
+                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide border-b pb-2">
+                    {label}
+                  </h3>
+                  <div className="space-y-2">
+                    {groupMatches.map((m) => <MatchRow key={m.id} match={m} />)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
 
       {/* Modal de planilla del equipo */}
       <Dialog open={teamOpen} onOpenChange={setTeamOpen}>

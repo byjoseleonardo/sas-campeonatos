@@ -81,6 +81,7 @@ const sportLabels: Record<Sport, string> = {
   futsal: "Futsal",
   baloncesto: "Baloncesto",
   voleibol: "Voleibol",
+  ajedrez: "Ajedrez",
 };
 
 const formatLabels: Record<ChampionshipFormat, string> = {

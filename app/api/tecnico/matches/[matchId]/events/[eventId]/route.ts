@@ -53,7 +53,7 @@ export async function DELETE(
 
     // Recalcular marcador si era gol
     const affectsScore = event.eventType === EventType.gol || event.eventType === EventType.gol_en_contra;
-    const score = affectsScore ? await recalcScore(matchId, match.homeTeamId) : null;
+    const score = affectsScore ? await recalcScore(matchId, match.homeTeamId!) : null;
 
     return NextResponse.json({ ok: true, score });
   } catch (error) {

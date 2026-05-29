@@ -139,6 +139,10 @@ export default function MatchControlPage({
   // Confirmar finalizar
   const [finalizarOpen, setFinalizarOpen] = useState(false);
 
+  // Definición por penales (empate al finalizar)
+  const [penalesOpen, setPenalesOpen]     = useState(false);
+  const [penalesWinner, setPenalesWinner] = useState("");
+
   // Eliminar evento
   const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
 
@@ -156,18 +160,26 @@ export default function MatchControlPage({
 
   // ─── Acciones del partido ────────────────────────────────────────────────
 
-  const handleAction = async (action: "iniciar" | "finalizar") => {
+  const handleAction = async (action: "iniciar" | "finalizar", winnerTeamId?: string) => {
     setActing(true);
     try {
       const res = await fetch(`/api/tecnico/matches/${matchId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, ...(winnerTeamId ? { winnerTeamId } : {}) }),
       });
       const data = await res.json();
+      // Empate: el servidor exige definir ganador (penales)
+      if (res.status === 422 && data.requiresWinner) {
+        setFinalizarOpen(false);
+        setPenalesWinner("");
+        setPenalesOpen(true);
+        return;
+      }
       if (!res.ok) throw new Error(data.error);
       toast({ title: action === "iniciar" ? "Partido iniciado" : "Partido finalizado" });
       setFinalizarOpen(false);
+      setPenalesOpen(false);
       await fetchMatch();
     } catch (e: unknown) {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Error", variant: "destructive" });
@@ -288,6 +300,29 @@ export default function MatchControlPage({
 
   if (!match) {
     return <p className="text-center py-12 text-muted-foreground">Partido no encontrado.</p>;
+  }
+
+  // Partido de llave aún sin equipos definidos (ganador/perdedor de semifinales)
+  if (!match.homeTeam || !match.awayTeam) {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => router.push("/tecnico/partidos")}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Volver
+        </button>
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+            <ClipboardList className="h-10 w-10 text-muted-foreground/30" />
+            <p className="font-medium">{match.roundLabel ?? "Partido"} — equipos por definir</p>
+            <p className="text-sm text-muted-foreground">
+              Este partido se habilitará cuando se definan los equipos clasificados.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const isLive     = match.status === "en_curso";
@@ -703,6 +738,39 @@ export default function MatchControlPage({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Definición por penales (empate) ── */}
+      <Dialog open={penalesOpen} onOpenChange={(v) => !v && setPenalesOpen(false)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Definición por penales</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              El partido terminó <strong>{match.homeScore} — {match.awayScore}</strong> (empate).
+              Selecciona el equipo que ganó en la definición por penales.
+            </p>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Equipo ganador</Label>
+              <Select value={penalesWinner} onValueChange={setPenalesWinner}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar ganador" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={match.homeTeamId}>{match.homeTeam.name}</SelectItem>
+                  <SelectItem value={match.awayTeamId}>{match.awayTeam.name}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPenalesOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={() => handleAction("finalizar", penalesWinner)}
+              disabled={!penalesWinner || acting}
+            >
+              {acting && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+              Confirmar ganador
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Confirmar eliminar evento ── */}
       <AlertDialog open={!!deleteEventId} onOpenChange={(v) => !v && setDeleteEventId(null)}>

@@ -91,7 +91,7 @@ export async function POST(
     // Recalcular marcador si es gol
     let score: { homeScore: number; awayScore: number } | null = null;
     if (SCORE_EVENTS.has(data.eventType as EventType)) {
-      score = await recalcScore(matchId, match.homeTeamId);
+      score = await recalcScore(matchId, match.homeTeamId!);
     }
 
     return NextResponse.json({ event, score }, { status: 201 });
