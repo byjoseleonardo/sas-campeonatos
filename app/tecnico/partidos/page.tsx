@@ -75,7 +75,7 @@ export default function TecnicoPartidosPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-4xl text-foreground">MIS PARTIDOS</h1>
+        <h1 className="font-display text-3xl sm:text-4xl text-foreground">MIS PARTIDOS</h1>
         <p className="text-muted-foreground text-sm mt-1">
           Partidos de los campeonatos asignados a ti
         </p>
@@ -110,10 +110,10 @@ export default function TecnicoPartidosPage() {
                   <Link key={match.id} href={`/tecnico/partidos/${match.id}`}>
                     <Card className={`hover:shadow-md transition-shadow cursor-pointer ${isLive ? "ring-2 ring-primary/40" : ""}`}>
                       <CardContent className="p-4">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 sm:gap-4">
                           {/* Equipos y marcador */}
-                          <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                            <p className="text-sm font-semibold text-right leading-tight">{match.homeTeam?.name ?? "Por definir"}</p>
+                          <div className="flex-1 grid min-w-0 grid-cols-[1fr_auto_1fr] items-center gap-3">
+                            <p className="min-w-0 break-words text-sm font-semibold text-right leading-tight">{match.homeTeam?.name ?? "Por definir"}</p>
                             <div className="flex flex-col items-center gap-0.5">
                               {isDone || isLive ? (
                                 <span className={`font-display text-2xl tabular-nums ${isLive ? "text-primary" : ""}`}>
@@ -126,7 +126,7 @@ export default function TecnicoPartidosPage() {
                                 <span className="text-[10px] font-medium text-primary animate-pulse">EN VIVO</span>
                               )}
                             </div>
-                            <p className="text-sm font-semibold leading-tight">{match.awayTeam?.name ?? "Por definir"}</p>
+                            <p className="min-w-0 break-words text-sm font-semibold leading-tight">{match.awayTeam?.name ?? "Por definir"}</p>
                           </div>
 
                           {/* Info */}

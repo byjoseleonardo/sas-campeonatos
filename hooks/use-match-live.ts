@@ -17,6 +17,14 @@ export interface LiveEvent {
   player: Player;
 }
 
+export interface LiveSet {
+  setNumber: number;
+  homePoints: number;
+  awayPoints: number;
+  status: string;
+  winnerTeamId: string | null;
+}
+
 export interface LiveMatch {
   id: string;
   status: string;
@@ -32,6 +40,10 @@ export interface LiveMatch {
   venue: string | null;
   scheduledAt: string | null;
   events: LiveEvent[];
+  // Vóley
+  sport?: string;
+  currentSet?: number | null;
+  sets?: LiveSet[];
 }
 
 /**

@@ -74,6 +74,8 @@ export default function LiveMatchPage({
 
   const isLive   = match.status === "en_curso";
   const isDone   = match.status === "finalizado";
+  const isVolley = match.sport === "voleibol";
+  const currentSetObj = match.sets?.find((s) => s.setNumber === match.currentSet) ?? null;
   const sortedEvents = [...match.events].sort((a, b) => a.minute - b.minute);
 
   return (
@@ -142,6 +144,18 @@ export default function LiveMatchPage({
               </div>
             </div>
 
+            {isVolley && (
+              <p className="mt-3 text-center text-[11px] uppercase tracking-widest text-muted-foreground">Sets ganados</p>
+            )}
+            {isVolley && isLive && match.currentSet != null && (
+              <p className="mt-1 text-center text-sm font-medium">
+                Set {match.currentSet}:{" "}
+                <span className="font-display text-xl tabular-nums">
+                  {currentSetObj?.homePoints ?? 0} – {currentSetObj?.awayPoints ?? 0}
+                </span>
+              </p>
+            )}
+
             {match.venue && (
               <p className="text-center text-[11px] text-muted-foreground mt-4">
                 📍 {match.venue}
@@ -150,7 +164,35 @@ export default function LiveMatchPage({
           </CardContent>
         </Card>
 
-        {/* Eventos */}
+        {/* Sets (vóley) */}
+        {isVolley && (
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">Sets</h2>
+            <Card>
+              <CardContent className="p-0 divide-y divide-border/50">
+                {(match.sets ?? []).length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-muted-foreground">El partido aún no ha comenzado.</p>
+                ) : (
+                  (match.sets ?? []).map((s) => (
+                    <div key={s.setNumber} className="flex items-center justify-between px-4 py-2.5">
+                      <span className="text-xs text-muted-foreground">
+                        Set {s.setNumber}{s.status !== "finalizado" ? " · en juego" : ""}
+                      </span>
+                      <span className="font-display text-lg tabular-nums">
+                        <span className={s.winnerTeamId === match.homeTeamId ? "font-bold text-primary" : ""}>{s.homePoints}</span>
+                        <span className="mx-1.5 text-muted-foreground">–</span>
+                        <span className={s.winnerTeamId === match.awayTeamId ? "font-bold text-primary" : ""}>{s.awayPoints}</span>
+                      </span>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Eventos (fútbol/futsal) */}
+        {!isVolley && (
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-foreground">Eventos del Partido</h2>
 
@@ -217,6 +259,7 @@ export default function LiveMatchPage({
             </Card>
           )}
         </div>
+        )}
 
         {/* Footer */}
         <p className="text-center text-[10px] text-muted-foreground pb-4">

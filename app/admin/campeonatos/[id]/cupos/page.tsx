@@ -144,7 +144,7 @@ export default function CuposPage() {
       </div>
 
       {/* Resumen */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <Card>
           <CardContent className="pt-4 pb-4 flex items-center gap-3">
             <Shield className="h-8 w-8 text-muted-foreground/40" />

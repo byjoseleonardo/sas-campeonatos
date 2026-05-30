@@ -20,6 +20,10 @@ export interface BracketMatchState {
   venue: string | null;
   homeTeam: BracketTeam | null;
   awayTeam: BracketTeam | null;
+  // Vóley: set en juego y sus puntos (opcional; llega por el socket de tiempo real)
+  currentSet?: number | null;
+  currentSetHome?: number | null;
+  currentSetAway?: number | null;
 }
 
 export interface BracketState {

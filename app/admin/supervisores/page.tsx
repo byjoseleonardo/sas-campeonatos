@@ -182,7 +182,7 @@ export default function AdminSupervisoresPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-4xl text-foreground">SUPERVISORES</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-foreground">SUPERVISORES</h1>
           <p className="text-muted-foreground text-sm mt-1">Crea y gestiona los supervisores de tus campeonatos</p>
         </div>
 

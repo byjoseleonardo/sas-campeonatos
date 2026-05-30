@@ -80,7 +80,7 @@ export default function SuperAdminDashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-display text-4xl text-foreground">DASHBOARD</h1>
+        <h1 className="font-display text-3xl sm:text-4xl text-foreground">DASHBOARD</h1>
         <p className="text-muted-foreground text-sm mt-1">
           Resumen de la plataforma SAS Campeonatos
         </p>

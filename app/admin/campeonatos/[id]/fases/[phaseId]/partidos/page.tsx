@@ -294,7 +294,7 @@ export default function PartidosPage({
   const isLocked = champ?.status === "finalizado";
   const isGroupPhase = phase?.type === "grupos";
   const canBracket =
-    !!champ && ["futbol", "futsal"].includes(champ.sport) && phase?.type === "eliminacion";
+    !!champ && ["futbol", "futsal", "voleibol"].includes(champ.sport) && phase?.type === "eliminacion";
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -442,7 +442,7 @@ export default function PartidosPage({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <button
             onClick={() => router.push(`/admin/campeonatos/${id}/fases`)}
@@ -450,11 +450,11 @@ export default function PartidosPage({
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Fases — {champ?.name}
           </button>
-          <h1 className="font-display text-4xl text-foreground">PARTIDOS</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-foreground">PARTIDOS</h1>
           {phase && <p className="text-muted-foreground text-sm mt-1">{phase.name}</p>}
         </div>
         {!isLocked && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {isGroupPhase && groups.length > 0 && matches.length === 0 && (
               <Button variant="outline" onClick={openGenerate} className="gap-1.5">
                 <Wand2 className="h-4 w-4" /> Generar partidos
@@ -572,9 +572,9 @@ export default function PartidosPage({
                 return (
                   <Card key={match.id}>
                     <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                          <p className={`text-sm font-medium text-right ${match.homeTeam ? "" : "text-muted-foreground italic"}`}>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex-1 grid min-w-0 grid-cols-[1fr_auto_1fr] items-center gap-3">
+                          <p className={`truncate text-sm font-medium text-right ${match.homeTeam ? "" : "text-muted-foreground italic"}`}>
                             {match.homeTeam?.name ?? "Por definir"}
                           </p>
                           <div className="flex items-center gap-1.5">
@@ -586,7 +586,7 @@ export default function PartidosPage({
                               <span className="text-muted-foreground text-sm font-medium">vs</span>
                             )}
                           </div>
-                          <p className={`text-sm font-medium ${match.awayTeam ? "" : "text-muted-foreground italic"}`}>
+                          <p className={`truncate text-sm font-medium ${match.awayTeam ? "" : "text-muted-foreground italic"}`}>
                             {match.awayTeam?.name ?? "Por definir"}
                           </p>
                         </div>

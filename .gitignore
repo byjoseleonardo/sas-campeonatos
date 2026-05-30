@@ -64,3 +64,9 @@ image.png
 
 # Bitácora/documentación local — no va al repo
 /docs/
+
+# Playwright MCP: config local + artefactos de test (capturas, snapshots, console logs) — no va al repo
+.mcp.json
+/.playwright-mcp/
+voley-*.png
+voley-e2e-final.png

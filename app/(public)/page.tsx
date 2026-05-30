@@ -56,7 +56,9 @@ export default async function Home() {
     take: 3,
   });
 
-  // Últimos partidos: en_curso primero, luego los más recientes finalizados/programados
+  // Últimos partidos: por estado, luego jerarquía de ronda (… → semifinal → tercer
+  // puesto → final, según el orden del enum MatchRound) y por fecha. Los partidos sin
+  // fecha ("Por definir") quedan al final y no se trepan sobre las semifinales.
   const matches = await prisma.match.findMany({
     where: { status: { not: "postergado" } },
     include: {
@@ -64,7 +66,11 @@ export default async function Home() {
       awayTeam:     { select: { id: true, name: true } },
       championship: { select: { id: true, name: true } },
     },
-    orderBy: [{ status: "asc" }, { scheduledAt: "desc" }],
+    orderBy: [
+      { status: "asc" },
+      { round: "asc" },
+      { scheduledAt: { sort: "desc", nulls: "last" } },
+    ],
     take: 4,
   });
 
@@ -125,6 +131,14 @@ export default async function Home() {
             ))}
           </div>
         )}
+
+        {/* Ver todos — visible en móvil (en escritorio está arriba a la derecha) */}
+        <Link
+          href="/campeonatos"
+          className="mt-6 flex items-center justify-center gap-1 rounded-lg border border-primary/30 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 md:hidden"
+        >
+          Ver todos los campeonatos <ArrowRight className="h-4 w-4" />
+        </Link>
       </section>
 
       {/* Últimos partidos */}
@@ -191,6 +205,14 @@ export default async function Home() {
               })}
             </div>
           )}
+
+          {/* Ver todos — visible en móvil (en escritorio está arriba a la derecha) */}
+          <Link
+            href="/partidos"
+            className="mt-6 flex items-center justify-center gap-1 rounded-lg border border-primary/30 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 md:hidden"
+          >
+            Ver todos los partidos <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
     </div>

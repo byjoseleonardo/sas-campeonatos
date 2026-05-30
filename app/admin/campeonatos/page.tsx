@@ -169,7 +169,7 @@ function ChampionshipForm({ form, setForm, tecnicos, supervisores }: Championshi
       </div>
 
       {/* Deporte y formato */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-2">
           <Label>Deporte <span className="text-destructive">*</span></Label>
           <Select value={form.sport} onValueChange={(v) => setForm({ ...form, sport: v as Sport })}>
@@ -207,7 +207,7 @@ function ChampionshipForm({ form, setForm, tecnicos, supervisores }: Championshi
       </div>
 
       {/* Fechas */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-2">
           <Label>Fecha de inicio</Label>
           <Input
@@ -231,7 +231,7 @@ function ChampionshipForm({ form, setForm, tecnicos, supervisores }: Championshi
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
           <Clock className="h-3.5 w-3.5" /> Configuración del partido
         </p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label>Duración (min)</Label>
             <Input
@@ -254,7 +254,7 @@ function ChampionshipForm({ form, setForm, tecnicos, supervisores }: Championshi
             <p className="text-xs text-muted-foreground">Se generarán credenciales automáticamente</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label>Máx. jugadores por equipo</Label>
             <Input
@@ -497,7 +497,7 @@ export default function AdminChampionshipsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-4xl text-foreground">
+          <h1 className="font-display text-3xl sm:text-4xl text-foreground">
             {isOrganizador ? "MIS CAMPEONATOS" : "CAMPEONATOS"}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">

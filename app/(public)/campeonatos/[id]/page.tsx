@@ -419,8 +419,8 @@ export default function ChampionshipDetailPage({
               </CardContent>
             </Card>
           ) : (
-            // Grupos/rondas en una misma línea (grid responsive: se acomodan en móvil)
-            <div className="grid items-start gap-6 grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
+            // Grupos/rondas en una misma línea (1 columna en móvil para no desbordar)
+            <div className="grid items-start gap-6 grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
               {groupedEntries.map(([key, { label, matches: groupMatches }]) => (
                 <div key={key} className="space-y-3">
                   <h3 className="flex items-center gap-2 text-lg font-bold text-foreground uppercase tracking-wide border-b-2 border-primary/40 pb-2">

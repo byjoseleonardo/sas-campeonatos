@@ -176,7 +176,7 @@ export default function AdminDelegadosPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-4xl text-foreground">DELEGADOS</h1>
+        <h1 className="font-display text-3xl sm:text-4xl text-foreground">DELEGADOS</h1>
         <p className="text-muted-foreground text-sm mt-1">
           Gestiona las credenciales de acceso de los delegados por campeonato
         </p>
@@ -217,7 +217,7 @@ export default function AdminDelegadosPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
             <Card>
               <CardContent className="flex items-center gap-3 p-4">
                 <div className="rounded-xl p-2.5 bg-muted">

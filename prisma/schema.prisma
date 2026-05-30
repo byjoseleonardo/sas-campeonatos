@@ -369,9 +369,18 @@ model Match {
   status         MatchStatus @default(programado)
   round          MatchRound  @default(fase_grupos)
 
-  // Resultado
+  // Resultado (en vóley, homeScore/awayScore = SETS ganados)
   homeScore Int @default(0)
   awayScore Int @default(0)
+
+  // Vóley: configuración del marcador por sets. La fija la mesa técnica al INICIAR
+  // el partido (nullable hasta entonces; no aplica a fútbol).
+  setsToWin         Int? // 2 = al mejor de 3, 3 = al mejor de 5
+  pointsPerSet      Int? // puntos objetivo de los sets normales (ej. 25)
+  decidingSetPoints Int? // puntaje del set decisivo si difiere (ej. 15); null = igual
+  winByMargin       Int? // ventaja mínima para cerrar el set (default 2)
+  capPoints         Int? // tope opcional: cierra el set al llegar aquí sin importar la ventaja
+  currentSet        Int? // número del set en juego
 
   // Ganador resuelto (necesario para empates definidos por penales)
   winnerTeamId String?
@@ -412,6 +421,7 @@ model Match {
   loserPrevMatches Match[]  @relation("LoserBracketProgression")
 
   events MatchEvent[]
+  sets   MatchSet[]
 
   @@map("matches")
 }
@@ -435,6 +445,25 @@ model MatchEvent {
   recordedBy  User    @relation("EventRecordedBy", fields: [recordedById], references: [id])
 
   @@map("match_events")
+}
+
+// Vóley: detalle punto a punto de cada set de un partido.
+// homeScore/awayScore del Match guardan los SETS ganados; aquí van los puntos.
+model MatchSet {
+  id           String   @id @default(cuid())
+  matchId      String
+  setNumber    Int
+  homePoints   Int      @default(0)
+  awayPoints   Int      @default(0)
+  status       String   @default("en_curso") // en_curso | finalizado
+  winnerTeamId String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, setNumber])
+  @@map("match_sets")
 }
 
 // ─────────────────────────────────────────────
