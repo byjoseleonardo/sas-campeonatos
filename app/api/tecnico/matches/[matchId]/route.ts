@@ -2,20 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { z } from "zod";
-import { Role } from "@/lib/generated/prisma/enums";
 import { advanceBracket } from "@/lib/bracket";
-
-async function canAccessMatch(userId: string, matchId: string) {
-  const match = await prisma.match.findUnique({
-    where: { id: matchId },
-    select: { championshipId: true },
-  });
-  if (!match) return null;
-  const role = await prisma.userRole.findFirst({
-    where: { userId, role: Role.tecnico_mesa, championshipId: match.championshipId },
-  });
-  return role ? match : null;
-}
+import { canAccessMatch } from "@/lib/match-access";
 
 // GET /api/tecnico/matches/[matchId] — detalle con eventos y planillas
 export async function GET(
@@ -36,7 +24,7 @@ export async function GET(
       include: {
         homeTeam:    { select: { id: true, name: true } },
         awayTeam:    { select: { id: true, name: true } },
-        championship: { select: { id: true, name: true } },
+        championship: { select: { id: true, name: true, sport: true } },
         phase:        { select: { id: true, name: true } },
         events: {
           include: {
@@ -44,6 +32,10 @@ export async function GET(
             team:   { select: { id: true, name: true } },
           },
           orderBy: { minute: "asc" },
+        },
+        sets: {
+          orderBy: { setNumber: "asc" },
+          select: { setNumber: true, homePoints: true, awayPoints: true, status: true, winnerTeamId: true },
         },
       },
     });

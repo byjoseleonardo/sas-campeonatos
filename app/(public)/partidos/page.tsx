@@ -14,11 +14,47 @@ interface Match {
   awayScore: number;
   scheduledAt: string | null;
   venue: string | null;
+  round: string | null;
   roundLabel: string | null;
   homeTeam: { id: string; name: string } | null;
   awayTeam: { id: string; name: string } | null;
   championship: { id: string; name: string };
   phase: { id: string; name: string } | null;
+}
+
+// Orden de las rondas de eliminación (mismo criterio que la vista de campeonato):
+// ... → semifinales → tercer puesto → final. Los partidos sin ronda (liga/grupos)
+// quedan antes, ordenados por fecha.
+const ROUND_ORDER: Record<string, number> = {
+  dieciseisavos: 1, octavos: 2, cuartos: 3, semifinal: 4, tercer_puesto: 5, final: 6,
+};
+
+// Etiqueta específica de la ronda de eliminación (en vez del nombre de fase "Eliminación").
+const ROUND_LABEL: Record<string, string> = {
+  dieciseisavos: "Dieciseisavos",
+  octavos: "Octavos de final",
+  cuartos: "Cuartos de final",
+  semifinal: "Semifinal",
+  tercer_puesto: "Tercer puesto",
+  final: "Final",
+};
+
+// Texto a mostrar en la tarjeta: si el partido es de llave, su ronda; si no, la fase/etiqueta libre.
+function matchLabel(m: Match) {
+  if (m.round && ROUND_LABEL[m.round]) return ROUND_LABEL[m.round];
+  return m.phase?.name ?? m.roundLabel ?? "";
+}
+
+function roundRank(m: Match) {
+  return m.round && ROUND_ORDER[m.round] ? ROUND_ORDER[m.round] : 0;
+}
+
+function compareMatches(a: Match, b: Match) {
+  const r = roundRank(a) - roundRank(b);
+  if (r !== 0) return r;
+  const ta = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0;
+  const tb = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0;
+  return ta - tb;
 }
 
 const statusFilters = ["todos", "en_curso", "programado", "finalizado"] as const;
@@ -83,6 +119,11 @@ export default function MatchesPage() {
     byChamp[key].matches.push(m);
   }
 
+  // Ordenar los partidos de cada campeonato por ronda: semifinales → tercer puesto → final
+  for (const group of Object.values(byChamp)) {
+    group.matches.sort(compareMatches);
+  }
+
   return (
     <div className="container py-12">
       <div className="flex items-center gap-3">
@@ -140,7 +181,7 @@ export default function MatchesPage() {
                         <CardContent className="p-4">
                           {/* Info superior */}
                           <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
-                            <span>{m.phase?.name ?? m.roundLabel ?? ""}</span>
+                            <span>{matchLabel(m)}</span>
                             <div className="flex items-center gap-1.5">
                               {isLive && (
                                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />

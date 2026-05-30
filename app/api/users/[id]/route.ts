@@ -15,6 +15,7 @@ const updateUserSchema = z.object({
   isActive: z.boolean().optional(),
   role: z.nativeEnum(Role).optional(),
   championshipId: z.string().nullable().optional(),
+  championshipIds: z.array(z.string()).optional(), // multi-campeonato (técnicos)
   teamId: z.string().nullable().optional(),
 });
 
@@ -66,29 +67,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     // Separar datos del usuario de datos del rol
-    const { role, championshipId, teamId, password, ...userFields } = data;
+    const { role, championshipId, championshipIds, teamId, password, ...userFields } = data;
 
     const updateData: Record<string, unknown> = { ...userFields };
     if (password) {
       updateData.password = await bcrypt.hash(password, 12);
+      // El admin asigna una contraseña definitiva: ya no se fuerza el cambio
+      // (evita el loop de redirección a /delegado/cambiar-password para no-delegados).
+      updateData.mustChangePassword = false;
+      updateData.tempPassword = null;
     }
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: updateData,
-      include: {
-        userRoles: {
-          include: {
-            championship: { select: { id: true, name: true } },
-            team: { select: { id: true, name: true } },
-          },
-        },
-      },
-    });
+    await prisma.user.update({ where: { id }, data: updateData });
 
-    // Si se envia un nuevo rol, actualizar o crear el UserRole
-    if (role !== undefined) {
-      const existingRole = user.userRoles[0];
+    if (championshipIds !== undefined) {
+      // Multi-campeonato: reemplaza TODAS las asignaciones de este rol por la
+      // selección actual (uno por campeonato; o "sin asignar" si está vacío).
+      const syncRole = role ?? Role.tecnico_mesa;
+      await prisma.userRole.deleteMany({ where: { userId: id, role: syncRole } });
+      await prisma.userRole.createMany({
+        data:
+          championshipIds.length > 0
+            ? championshipIds.map((cid) => ({ userId: id, role: syncRole, championshipId: cid, teamId: teamId || null }))
+            : [{ userId: id, role: syncRole, championshipId: null, teamId: teamId || null }],
+      });
+    } else if (role !== undefined) {
+      // Compatibilidad: actualización de un único rol (championshipId simple).
+      const existingRole = await prisma.userRole.findFirst({ where: { userId: id } });
       if (existingRole) {
         await prisma.userRole.update({
           where: { id: existingRole.id },
@@ -105,7 +110,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
-    const { password: _pw, ...safeUser } = user;
+    // Re-leer con los roles ya sincronizados para la respuesta.
+    const fresh = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        userRoles: {
+          include: {
+            championship: { select: { id: true, name: true } },
+            team: { select: { id: true, name: true } },
+          },
+        },
+      },
+    });
+
+    const { password: _pw, ...safeUser } = fresh!;
     return NextResponse.json(safeUser);
   } catch (error) {
     if (error instanceof z.ZodError) {

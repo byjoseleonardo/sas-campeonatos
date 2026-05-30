@@ -16,15 +16,48 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Search, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Championship {
   id: string;
   name: string;
+}
+
+// Selector múltiple de campeonatos (un técnico puede pertenecer a varios)
+function ChampionshipPicker({
+  championships,
+  selected,
+  onToggle,
+}: {
+  championships: Championship[];
+  selected: string[];
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label>Campeonatos <span className="text-muted-foreground text-xs">(uno o varios)</span></Label>
+      <div className="max-h-44 space-y-0.5 overflow-y-auto rounded-md border p-1.5">
+        {championships.length === 0 ? (
+          <p className="px-1.5 py-2 text-xs text-muted-foreground">No hay campeonatos disponibles.</p>
+        ) : (
+          championships.map((c) => (
+            <label
+              key={c.id}
+              className="flex cursor-pointer items-center gap-2.5 rounded px-1.5 py-1.5 transition-colors hover:bg-muted/60"
+            >
+              <Checkbox checked={selected.includes(c.id)} onCheckedChange={() => onToggle(c.id)} />
+              <span className="text-sm">{c.name}</span>
+            </label>
+          ))
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {selected.length === 0 ? "Sin asignar" : `${selected.length} campeonato(s) seleccionado(s)`}
+      </p>
+    </div>
+  );
 }
 
 interface UserRoleInfo {
@@ -48,7 +81,7 @@ function tecnicoFullName(t: Tecnico) {
   return [t.firstName, t.paternalLastName, t.maternalLastName].filter(Boolean).join(" ");
 }
 
-const emptyForm = { firstName: "", paternalLastName: "", maternalLastName: "", email: "", password: "", championshipId: "" };
+const emptyForm = { firstName: "", paternalLastName: "", maternalLastName: "", email: "", password: "", championshipIds: [] as string[] };
 
 export default function AdminTecnicosPage() {
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
@@ -62,6 +95,14 @@ export default function AdminTecnicosPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const { toast } = useToast();
+
+  const toggleChamp = (id: string) =>
+    setForm((f) => ({
+      ...f,
+      championshipIds: f.championshipIds.includes(id)
+        ? f.championshipIds.filter((x) => x !== id)
+        : [...f.championshipIds, id],
+    }));
 
   const fetchTecnicos = useCallback(async () => {
     setLoading(true);
@@ -103,7 +144,7 @@ export default function AdminTecnicosPage() {
           email: form.email,
           password: form.password,
           role: "tecnico_mesa",
-          championshipId: form.championshipId || undefined,
+          championshipIds: form.championshipIds,
         }),
       });
       const data = await res.json();
@@ -129,7 +170,8 @@ export default function AdminTecnicosPage() {
       body.maternalLastName = form.maternalLastName || null;
       if (form.email) body.email = form.email;
       if (form.password) body.password = form.password;
-      if (form.championshipId !== undefined) body.championshipId = form.championshipId || null;
+      body.role = "tecnico_mesa";
+      body.championshipIds = form.championshipIds;
 
       const res = await fetch(`/api/users/${editTecnico.id}`, {
         method: "PATCH",
@@ -166,14 +208,16 @@ export default function AdminTecnicosPage() {
 
   const openEdit = (t: Tecnico) => {
     setEditTecnico(t);
-    const firstRole = t.userRoles[0];
+    const champIds = t.userRoles
+      .filter((r) => r.role === "tecnico_mesa" && r.championship)
+      .map((r) => r.championship!.id);
     setForm({
       firstName: t.firstName,
       paternalLastName: t.paternalLastName,
       maternalLastName: t.maternalLastName ?? "",
       email: t.email,
       password: "",
-      championshipId: firstRole?.championship?.id ?? "",
+      championshipIds: champIds,
     });
     setEditOpen(true);
   };
@@ -182,7 +226,7 @@ export default function AdminTecnicosPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-4xl text-foreground">TÉCNICOS DE MESA</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-foreground">TÉCNICOS DE MESA</h1>
           <p className="text-muted-foreground text-sm mt-1">Crea y gestiona los técnicos de mesa de tus campeonatos</p>
         </div>
 
@@ -194,7 +238,7 @@ export default function AdminTecnicosPage() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Crear Técnico de Mesa</DialogTitle>
-              <DialogDescription>Registra un técnico de mesa y asígnalo a un campeonato.</DialogDescription>
+              <DialogDescription>Registra un técnico de mesa y asígnalo a uno o varios campeonatos.</DialogDescription>
             </DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); handleCreate(); }} className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-3">
@@ -219,18 +263,7 @@ export default function AdminTecnicosPage() {
                 <Label>Contraseña</Label>
                 <Input type="password" placeholder="••••••••" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
               </div>
-              <div className="space-y-2">
-                <Label>Campeonato <span className="text-muted-foreground text-xs">(opcional)</span></Label>
-                <Select value={form.championshipId} onValueChange={(v) => setForm({ ...form, championshipId: v === "none" ? "" : v })}>
-                  <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sin asignar</SelectItem>
-                    {championships.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <ChampionshipPicker championships={championships} selected={form.championshipIds} onToggle={toggleChamp} />
               <DialogFooter>
                 <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
                 <Button type="submit" disabled={saving}>
@@ -272,18 +305,7 @@ export default function AdminTecnicosPage() {
               <Label>Nueva contraseña <span className="text-muted-foreground text-xs">(dejar vacío para no cambiar)</span></Label>
               <Input type="password" placeholder="••••••••" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </div>
-            <div className="space-y-2">
-              <Label>Campeonato</Label>
-              <Select value={form.championshipId} onValueChange={(v) => setForm({ ...form, championshipId: v === "none" ? "" : v })}>
-                <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin asignar</SelectItem>
-                  {championships.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <ChampionshipPicker championships={championships} selected={form.championshipIds} onToggle={toggleChamp} />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => { setEditOpen(false); setEditTecnico(null); setForm(emptyForm); }}>Cancelar</Button>
               <Button type="submit" disabled={saving}>
@@ -335,14 +357,16 @@ export default function AdminTecnicosPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Técnico de Mesa</TableHead>
-                  <TableHead>Campeonato asignado</TableHead>
+                  <TableHead>Campeonatos</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {tecnicos.map((t) => {
-                  const firstRole = t.userRoles[0];
+                  const champs = t.userRoles
+                    .filter((r) => r.role === "tecnico_mesa" && r.championship)
+                    .map((r) => r.championship!);
                   return (
                     <TableRow key={t.id}>
                       <TableCell>
@@ -356,8 +380,18 @@ export default function AdminTecnicosPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {firstRole?.championship?.name || "Sin asignar"}
+                      <TableCell>
+                        {champs.length === 0 ? (
+                          <span className="text-sm text-muted-foreground">Sin asignar</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {champs.map((c) => (
+                              <span key={c.id} className="inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                {c.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${

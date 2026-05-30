@@ -14,25 +14,25 @@ export default function TecnicoLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <header className="sticky top-0 z-40 h-14 flex items-center justify-between border-b bg-card/80 backdrop-blur-lg px-6">
-        <div className="flex items-center gap-3">
-          <Trophy className="h-5 w-5 text-primary" />
+      <header className="sticky top-0 z-40 h-14 flex items-center justify-between border-b bg-card/80 backdrop-blur-lg px-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <Trophy className="h-5 w-5 shrink-0 text-primary" />
           <span className="font-display text-xl tracking-wide text-foreground">
             CHAMP<span className="text-primary">ZONE</span>
           </span>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-muted-foreground">Portal Técnico de Mesa</span>
+          <ChevronRight className="hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
+          <span className="hidden truncate text-sm font-medium text-muted-foreground sm:block">Portal Técnico de Mesa</span>
         </div>
         <button
           onClick={() => signOut({ redirectTo: "/" })}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <LogOut className="h-4 w-4" />
-          Cerrar sesión
+          <span className="hidden sm:inline">Cerrar sesión</span>
         </button>
       </header>
 
-      <nav className="border-b bg-card/50 px-6">
+      <nav className="border-b bg-card/50 px-4 sm:px-6">
         <div className="flex gap-1">
           {navItems.map((item) => {
             const active = pathname.startsWith(item.url);
@@ -54,7 +54,7 @@ export default function TecnicoLayout({ children }: { children: React.ReactNode 
         </div>
       </nav>
 
-      <main className="flex-1 p-6 max-w-4xl mx-auto w-full">
+      <main className="mx-auto w-full max-w-4xl flex-1 p-4 sm:p-6">
         {children}
       </main>
     </div>

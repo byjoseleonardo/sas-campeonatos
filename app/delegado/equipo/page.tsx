@@ -85,7 +85,7 @@ export default function DelegadoEquipoPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="font-display text-4xl text-foreground">MI EQUIPO</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-foreground">MI EQUIPO</h1>
           <p className="text-muted-foreground text-sm mt-1">Información general de tu equipo inscrito</p>
         </div>
         <Card className="border-dashed">
@@ -107,7 +107,7 @@ export default function DelegadoEquipoPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-4xl text-foreground">MI EQUIPO</h1>
+        <h1 className="font-display text-3xl sm:text-4xl text-foreground">MI EQUIPO</h1>
         <p className="text-muted-foreground text-sm mt-1">Información general de tu equipo inscrito</p>
       </div>
 

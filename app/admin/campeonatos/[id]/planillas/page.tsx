@@ -118,7 +118,7 @@ export default function PlanillasPage({ params }: { params: Promise<{ id: string
           <Link href="/admin/campeonatos"><ChevronLeft className="h-5 w-5" /></Link>
         </Button>
         <div>
-          <h1 className="font-display text-4xl text-foreground">PLANILLAS</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-foreground">PLANILLAS</h1>
           {championship && (
             <p className="text-muted-foreground text-sm mt-1">{championship.name}</p>
           )}
@@ -173,19 +173,19 @@ export default function PlanillasPage({ params }: { params: Promise<{ id: string
         teams.map((team) => (
           <Card key={team.id}>
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <CardTitle className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-display text-sm text-primary">
                     {team.name.charAt(0)}
                   </div>
                   <div>
                     <p className="font-display text-lg leading-tight">{team.name}</p>
                     {team.delegate ? (
-                      <p className="text-xs text-muted-foreground font-normal flex items-center gap-1 mt-0.5">
-                        <UserCircle className="h-3 w-3" />
+                      <p className="text-xs text-muted-foreground font-normal flex flex-wrap items-center gap-x-1 gap-y-0.5 mt-0.5">
+                        <UserCircle className="h-3 w-3 shrink-0" />
                         {[team.delegate.firstName, team.delegate.paternalLastName, team.delegate.maternalLastName].filter(Boolean).join(" ")}
                         <span className="text-muted-foreground/60">·</span>
-                        <span className="font-mono">{team.delegate.email}</span>
+                        <span className="font-mono break-all">{team.delegate.email}</span>
                       </p>
                     ) : (
                       <p className="text-xs text-muted-foreground/50 font-normal mt-0.5">Sin delegado asignado</p>

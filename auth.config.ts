@@ -41,8 +41,15 @@ export const authConfig = {
         return Response.redirect(new URL("/delegado/inscripcion", nextUrl));
       }
 
-      // No-delegado no puede acceder al portal delegado
-      if (pathname.startsWith("/delegado") && role !== Role.delegado) {
+      // No-delegado no puede acceder al portal delegado — EXCEPTO la página de
+      // cambio de contraseña obligatorio, que es común a todos los roles
+      // (técnico, organizador, supervisor). Sin esta excepción, un no-delegado
+      // con mustChangePassword=true entra en un loop de redirección.
+      if (
+        pathname.startsWith("/delegado") &&
+        pathname !== "/delegado/cambiar-password" &&
+        role !== Role.delegado
+      ) {
         return Response.redirect(new URL("/admin", nextUrl));
       }
 

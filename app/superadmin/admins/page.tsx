@@ -173,7 +173,7 @@ export default function SuperAdminAdminsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-4xl text-foreground">ADMINISTRADORES</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-foreground">ADMINISTRADORES</h1>
           <p className="text-muted-foreground text-sm mt-1">Gestiona los clientes del SAS Campeonatos</p>
         </div>
 

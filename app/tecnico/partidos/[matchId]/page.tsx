@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Loader2, Play, Square, AlertTriangle, ClipboardList, Gamepad2, Undo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import VolleyConsole from "@/components/tecnico/VolleyConsole";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -45,11 +46,20 @@ interface MatchDetail {
   awayTeamId: string;
   homeTeam: Team;
   awayTeam: Team;
-  championship: { id: string; name: string };
+  championship: { id: string; name: string; sport: string };
   phase: { id: string; name: string } | null;
   events: MatchEvent[];
   homeRoster: RosterEntry[];
   awayRoster: RosterEntry[];
+  // Vóley (presentes cuando el campeonato es de vóley)
+  currentSet: number | null;
+  winnerTeamId: string | null;
+  setsToWin: number | null;
+  pointsPerSet: number | null;
+  decidingSetPoints: number | null;
+  winByMargin: number | null;
+  capPoints: number | null;
+  sets: { setNumber: number; homePoints: number; awayPoints: number; status: string; winnerTeamId: string | null }[];
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -325,6 +335,18 @@ export default function MatchControlPage({
     );
   }
 
+  // Vóley: consola de sets (reemplaza la consola de fútbol para este deporte)
+  if (match.championship.sport === "voleibol") {
+    return (
+      <VolleyConsole
+        matchId={matchId}
+        initial={match}
+        champName={match.championship.name}
+        roundLabel={match.roundLabel}
+      />
+    );
+  }
+
   const isLive     = match.status === "en_curso";
   const isDone     = match.status === "finalizado";
   const canStart   = match.status === "programado" || match.status === "postergado";
@@ -426,7 +448,7 @@ export default function MatchControlPage({
               <CardContent className="p-4 space-y-4">
 
                 {/* Botones por equipo */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2 sm:gap-4">
                   {[
                     { team: match.homeTeam, teamId: match.homeTeamId, label: "LOCAL" },
                     { team: match.awayTeam, teamId: match.awayTeamId, label: "VISITANTE" },
@@ -439,7 +461,7 @@ export default function MatchControlPage({
                           <p className="text-xs font-semibold leading-tight">{team.name}</p>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-1.5">
+                      <div className="grid grid-cols-3 gap-1 sm:gap-1.5">
                         {/* Gol */}
                         <button
                           disabled={!isLive}
@@ -473,7 +495,7 @@ export default function MatchControlPage({
                 </div>
 
                 {/* Fila de controles del partido */}
-                <div className="flex items-center justify-between border-t border-border pt-3 gap-2">
+                <div className="flex flex-wrap items-center justify-between border-t border-border pt-3 gap-2">
                   {/* Anular gol */}
                   <button
                     disabled={!isLive}
@@ -527,9 +549,9 @@ export default function MatchControlPage({
                 <CardContent className="p-0">
                   {/* Cabecera */}
                   <div className="grid grid-cols-[1fr_auto_1fr] text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-4 py-2 border-b border-border">
-                    <span>{match.homeTeam.name}</span>
+                    <span className="min-w-0 truncate">{match.homeTeam.name}</span>
                     <span className="text-center px-4">Eventos</span>
-                    <span className="text-right">{match.awayTeam.name}</span>
+                    <span className="min-w-0 truncate text-right">{match.awayTeam.name}</span>
                   </div>
 
                   {/* Filas */}

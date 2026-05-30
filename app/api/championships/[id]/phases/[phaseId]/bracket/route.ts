@@ -4,8 +4,8 @@ import { auth } from "@/auth";
 import { z } from "zod";
 import { Role, MatchRound, Sport } from "@/lib/generated/prisma/enums";
 
-// Deportes con llave funcional (vóley es solo maqueta; ajedrez no aplica)
-const FUNCTIONAL_SPORTS: Sport[] = [Sport.futbol, Sport.futsal];
+// Deportes con llave funcional (vóley por sets; ajedrez no aplica)
+const FUNCTIONAL_SPORTS: Sport[] = [Sport.futbol, Sport.futsal, Sport.voleibol];
 
 // Los equipos son opcionales: la llave puede crearse vacía ("Por definir")
 // para insertar los cruces durante el sorteo presencial.

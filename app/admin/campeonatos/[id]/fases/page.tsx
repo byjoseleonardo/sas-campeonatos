@@ -330,11 +330,11 @@ function ClasificadosDialog({
             </p>
 
             {data.groups.map((group) => (
-              <div key={group.groupId} className="rounded-lg border border-border/60 overflow-hidden">
+              <div key={group.groupId} className="rounded-lg border border-border/60 overflow-x-auto">
                 <div className="bg-muted/40 px-3 py-2 border-b border-border/40">
                   <p className="text-xs font-semibold uppercase tracking-wide">{group.groupName}</p>
                 </div>
-                <table className="w-full text-xs">
+                <table className="w-full min-w-[480px] text-xs">
                   <thead>
                     <tr className="border-b border-border/30 text-muted-foreground">
                       <th className="text-left px-3 py-1.5 w-6"></th>
@@ -666,7 +666,7 @@ export default function FasesPage({ params }: { params: Promise<{ id: string }> 
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Campeonatos
           </button>
-          <h1 className="font-display text-4xl text-foreground">FASES</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-foreground">FASES</h1>
           {champ && <p className="text-muted-foreground text-sm mt-1">{champ.name}</p>}
         </div>
         {!isLocked && (
@@ -706,7 +706,7 @@ export default function FasesPage({ params }: { params: Promise<{ id: string }> 
             const canDraw = !isLocked && (phase.type === "grupos" || phase.type === "eliminacion" || phase.type === "final");
             return (
               <Card key={phase.id}>
-                <CardContent className="flex items-center gap-4 p-4">
+                <CardContent className="flex flex-wrap items-center gap-3 p-4">
                   {/* Reordenar */}
                   <div className="flex flex-col items-center gap-0.5 shrink-0">
                     <button disabled={idx === 0 || isLocked} onClick={() => movePhase(phase, "up")}
@@ -743,7 +743,7 @@ export default function FasesPage({ params }: { params: Promise<{ id: string }> 
                   </Badge>
 
                   {/* Acciones */}
-                  <div className="flex gap-1 shrink-0">
+                  <div className="flex flex-wrap gap-1 shrink-0 ml-auto">
                     {/* Clasificados — solo fases de grupos */}
                     {phase.type === "grupos" && (
                       <Button
@@ -832,7 +832,7 @@ export default function FasesPage({ params }: { params: Promise<{ id: string }> 
             {form.type === "grupos" && (
               <div className="rounded-lg border border-border/60 p-3 space-y-3">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Configuración de grupos</p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">N° de grupos</Label>
                     <Input type="number" min={1} value={form.numGroups}

@@ -15,6 +15,7 @@ const createUserSchema = z.object({
   dni: z.string().optional(),
   role: z.nativeEnum(Role),
   championshipId: z.string().optional(),
+  championshipIds: z.array(z.string()).optional(), // multi-campeonato (técnicos)
   teamId: z.string().optional(),
 });
 
@@ -123,6 +124,16 @@ export async function POST(req: NextRequest) {
       adminId = caller?.adminId ?? null;
     }
 
+    // Campeonatos a asignar: soporta multi-selección (championshipIds) o el
+    // championshipId único (compatibilidad con supervisores). Si no hay ninguno,
+    // se crea un rol "sin asignar" (championshipId null).
+    const champIds =
+      data.championshipIds && data.championshipIds.length > 0
+        ? data.championshipIds
+        : data.championshipId
+          ? [data.championshipId]
+          : [];
+
     const user = await prisma.user.create({
       data: {
         firstName: data.firstName,
@@ -134,11 +145,10 @@ export async function POST(req: NextRequest) {
         dni: data.dni,
         adminId,
         userRoles: {
-          create: {
-            role: data.role,
-            championshipId: data.championshipId || null,
-            teamId: data.teamId || null,
-          },
+          create:
+            champIds.length > 0
+              ? champIds.map((cid) => ({ role: data.role, championshipId: cid, teamId: data.teamId || null }))
+              : [{ role: data.role, championshipId: null, teamId: data.teamId || null }],
         },
       },
       include: {

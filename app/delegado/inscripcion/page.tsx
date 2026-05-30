@@ -211,7 +211,7 @@ export default function DelegadoInscripcionPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-4xl text-foreground">INSCRIPCIÓN DE JUGADORES</h1>
+        <h1 className="font-display text-3xl sm:text-4xl text-foreground">INSCRIPCIÓN DE JUGADORES</h1>
         <p className="text-muted-foreground text-sm mt-1">
           Ingresa el N° CIP del ingeniero para consultar sus datos y registrarlo en tu equipo
         </p>
@@ -297,7 +297,7 @@ export default function DelegadoInscripcionPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid gap-4 grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
             <Card>
               <CardContent className="flex items-center gap-3 p-4">
                 <div className="rounded-xl p-2.5 bg-primary/10">
