@@ -69,4 +69,6 @@ image.png
 .mcp.json
 /.playwright-mcp/
 voley-*.png
+futbol-*.png
+stream-*.png
 voley-e2e-final.png

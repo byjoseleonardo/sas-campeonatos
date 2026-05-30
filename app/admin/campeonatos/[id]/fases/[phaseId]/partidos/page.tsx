@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Swords, MapPin, Calendar, Tag, Users, Eye, Wand2, CheckCircle2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Loader2, Swords, MapPin, Calendar, Tag, Users, Eye, Wand2, CheckCircle2, RotateCcw, Radio } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -37,6 +37,7 @@ interface Match {
   awayTeam: Team | null;
   scheduledAt: string | null;
   venue: string | null;
+  streamUrl: string | null;
   roundLabel: string | null;
   status: string;
   round: string;
@@ -68,6 +69,7 @@ type FormState = {
   scheduledDate: string;
   scheduledTime: string;
   venue: string;
+  streamUrl: string;
   roundLabel: string;
   supervisorId: string;
 };
@@ -75,7 +77,7 @@ type FormState = {
 const emptyForm: FormState = {
   homeTeamId: "", awayTeamId: "",
   scheduledDate: "", scheduledTime: "",
-  venue: "", roundLabel: "", supervisorId: "",
+  venue: "", streamUrl: "", roundLabel: "", supervisorId: "",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -369,6 +371,7 @@ export default function PartidosPage({
       scheduledDate: dt ? dt.toISOString().slice(0, 10) : "",
       scheduledTime: dt ? dt.toTimeString().slice(0, 5) : "",
       venue:         match.venue ?? "",
+      streamUrl:     match.streamUrl ?? "",
       roundLabel:    match.roundLabel ?? "",
       supervisorId:  match.supervisorId ?? "",
     });
@@ -396,6 +399,7 @@ export default function PartidosPage({
         awayTeamId:   form.awayTeamId,
         scheduledAt:  buildScheduledAt(),
         venue:        form.venue.trim() || null,
+        streamUrl:    form.streamUrl.trim() || null,
         roundLabel:   form.roundLabel.trim() || null,
         supervisorId: form.supervisorId || null,
       };
@@ -768,6 +772,23 @@ export default function PartidosPage({
                 value={form.venue}
                 onChange={(e) => setForm({ ...form, venue: e.target.value })}
               />
+            </div>
+
+            {/* Link de transmisión */}
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5 text-xs">
+                <Radio className="h-3 w-3 text-muted-foreground" /> Link de transmisión
+                <span className="text-muted-foreground font-normal">(opcional)</span>
+              </Label>
+              <Input
+                type="url"
+                placeholder="https://youtube.com/...  ·  facebook.com/...  ·  tiktok.com/..."
+                value={form.streamUrl}
+                onChange={(e) => setForm({ ...form, streamUrl: e.target.value })}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Se detecta la plataforma automáticamente. Vacío = sin transmisión.
+              </p>
             </div>
 
             {/* Supervisor */}

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Clock, Swords } from "lucide-react";
 import { useLiveMatches } from "@/hooks/use-live-matches";
+import { StreamLink } from "@/components/StreamLink";
 
 interface Match {
   id: string;
@@ -14,6 +15,7 @@ interface Match {
   awayScore: number;
   scheduledAt: string | null;
   venue: string | null;
+  streamUrl: string | null;
   round: string | null;
   roundLabel: string | null;
   homeTeam: { id: string; name: string } | null;
@@ -183,6 +185,7 @@ export default function MatchesPage() {
                           <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
                             <span>{matchLabel(m)}</span>
                             <div className="flex items-center gap-1.5">
+                              <StreamLink url={m.streamUrl} />
                               {isLive && (
                                 <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                               )}

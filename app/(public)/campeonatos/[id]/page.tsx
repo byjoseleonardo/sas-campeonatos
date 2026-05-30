@@ -9,6 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, ArrowLeft, MapPin, Calendar, Users, Trophy, Swords, ShieldCheck, ChevronRight } from "lucide-react";
 import { useLiveMatches } from "@/hooks/use-live-matches";
+import { StreamLink } from "@/components/StreamLink";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -55,6 +56,7 @@ interface Match {
   awayScore: number;
   scheduledAt: string | null;
   venue: string | null;
+  streamUrl: string | null;
   round: string;
   roundLabel: string | null;
   homeTeam: { id: string; name: string; shieldUrl: string | null } | null;
@@ -165,9 +167,12 @@ function MatchRow({ match }: { match: Match }) {
           </div>
           <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
             <span>{dt ? `${dt.date} ${dt.time}` : "Sin fecha"}</span>
-            <Badge className={`text-[10px] border-0 ${matchStatusBadge[match.status]}`}>
-              {matchStatusLabel[match.status]}
-            </Badge>
+            <div className="flex items-center gap-1.5">
+              <StreamLink url={match.streamUrl} />
+              <Badge className={`text-[10px] border-0 ${matchStatusBadge[match.status]}`}>
+                {matchStatusLabel[match.status]}
+              </Badge>
+            </div>
           </div>
         </CardContent>
       </Card>
