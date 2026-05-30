@@ -38,6 +38,7 @@ export interface LiveMatch {
   phase: { id: string; name: string } | null;
   roundLabel: string | null;
   venue: string | null;
+  streamUrl?: string | null;
   scheduledAt: string | null;
   events: LiveEvent[];
   // Vóley

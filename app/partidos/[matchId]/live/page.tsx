@@ -5,6 +5,7 @@ import { useMatchLive } from "@/hooks/use-match-live";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Wifi, WifiOff } from "lucide-react";
+import { StreamLink } from "@/components/StreamLink";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -91,6 +92,7 @@ export default function LiveMatchPage({
           )}
         </div>
         <div className="flex items-center gap-2">
+          <StreamLink url={match.streamUrl} size="md" showLabel />
           <Badge className={`text-[11px] border ${statusBadge[match.status]}`}>
             {isLive && <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse inline-block" />}
             {statusLabel[match.status].toUpperCase()}

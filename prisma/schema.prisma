@@ -365,6 +365,7 @@ model Match {
   homeTeamId     String?
   awayTeamId     String?
   venue          String?
+  streamUrl      String?   // link de transmisión en vivo (null = no hay)
   scheduledAt    DateTime?
   status         MatchStatus @default(programado)
   round          MatchRound  @default(fase_grupos)
